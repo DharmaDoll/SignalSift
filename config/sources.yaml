@@ -1,0 +1,184 @@
+# SignalSift — Security Profile source configuration
+#
+# Policy:
+# - This file is the current Security Profile's source configuration.
+# - SignalSift core is generic; these sources are intentionally security-specific.
+# - Keep the active source set intentionally small.
+# - Prefer RSS / Atom / RDF.
+# - Use source-specific adapters only where generic parsing is insufficient.
+# - Candidate sources remain commented out until a real coverage gap is identified.
+# - Do not enable a source simply because it publishes security content.
+
+sources:
+
+  - id: jpcert
+    name: JPCERT/CC
+    enabled: true
+    type: rss
+    url: https://www.jpcert.or.jp/rss/jpcert.rdf
+    priority: 3
+    notes: Japanese operational alerts and curated security information.
+
+  - id: cisa_kev
+    name: CISA Known Exploited Vulnerabilities
+    enabled: true
+    type: json
+    url: https://raw.githubusercontent.com/cisagov/kev-data/refs/heads/develop/known_exploited_vulnerabilities.json
+    adapter: cisa_kev
+    priority: 3
+    force_notify_new_entries: true
+    notes: Confirmed exploitation signal.
+
+  - id: flatt
+    name: GMO Flatt Security
+    enabled: true
+    type: rss
+    url: https://blog.flatt.tech/rss
+    priority: 3
+    notes: Japanese AppSec and software supply-chain research.
+
+  - id: wiz
+    name: Wiz
+    enabled: true
+    type: rss
+    url: https://www.wiz.io/feed/rss.xml
+    priority: 3
+
+    source_filter:
+      exclude:
+        - webinar
+        - customer story
+        - event
+
+    notes: Cloud, vulnerability, supply-chain, AI and MCP research.
+
+  - id: stepsecurity
+    name: StepSecurity
+    enabled: true
+    type: rss
+    url: https://www.stepsecurity.io/blog/rss.xml
+    priority: 3
+
+    source_filter:
+      include_any:
+        - threat
+        - supply chain
+        - compromised
+        - malicious
+        - GitHub Actions
+        - npm
+        - PyPI
+
+    notes: High-value source for active software supply-chain incidents.
+
+  - id: aikido
+    name: Aikido Security
+    enabled: true
+    type: rss
+    url: https://www.aikido.dev/blog/rss.xml
+    priority: 2
+
+    source_filter:
+      exclude:
+        - customer story
+        - webinar
+        - company update
+        - funding
+
+    notes: OSS malware, package compromise and vulnerability research.
+
+  - id: google_threat_intel
+    name: Google Threat Intelligence / Mandiant
+    enabled: true
+    type: rss
+    url: https://feeds.feedburner.com/threatintelligence/pvexyqv7v0v
+    priority: 3
+    notes: Major campaigns, exploitation and AI-enabled threat research.
+
+
+  # ---------------------------------------------------------------------------
+  # Candidate sources
+  #
+  # Keep these commented out until their additional coverage is justified.
+  # When enabling one:
+  #   1. identify the coverage gap,
+  #   2. estimate overlap with active sources,
+  #   3. add local fixtures,
+  #   4. tune source/global filters,
+  #   5. observe Slack volume.
+  # ---------------------------------------------------------------------------
+
+  # - id: github_security_blog
+  #   name: GitHub Security Blog
+  #   enabled: true
+  #   type: rss
+  #   url: https://github.blog/security/
+  #   priority: 2
+  #   notes: Official GitHub/npm/Actions security information. Verify feed endpoint before enabling.
+
+  # - id: github_advisories
+  #   name: GitHub Global Security Advisories
+  #   enabled: true
+  #   type: json
+  #   url: https://api.github.com/advisories
+  #   adapter: github_advisories
+  #   priority: 2
+  #   notes: Enable only after defining ecosystem/product constraints.
+
+  # - id: socket
+  #   name: Socket Research
+  #   enabled: true
+  #   type: rss
+  #   url: https://socket.dev/blog
+  #   priority: 2
+  #   notes: Strong package-malware research. Potential overlap with StepSecurity/Aikido. Verify feed endpoint before enabling.
+
+  # - id: jvn
+  #   name: JVN / JVN iPedia
+  #   enabled: true
+  #   type: rss
+  #   url: https://jvndb.jvn.jp/ja/feed/
+  #   priority: 2
+  #   notes: Better when combined with watched products; broad use may be noisy.
+
+  # - id: openssf_malicious_packages
+  #   name: OpenSSF malicious-packages
+  #   enabled: true
+  #   type: json
+  #   url: https://github.com/ossf/malicious-packages
+  #   adapter: openssf_malicious_packages
+  #   priority: 2
+  #   notes: Prefer enrichment / validation over direct Slack notification.
+
+  # - id: nvd
+  #   name: NVD
+  #   enabled: true
+  #   type: json
+  #   url: https://services.nvd.nist.gov/rest/json/cves/2.0
+  #   adapter: nvd
+  #   priority: 1
+  #   notes: Prefer lookup/enrichment rather than primary notification source.
+
+  # - id: cisa_alerts
+  #   name: CISA Cybersecurity Alerts & Advisories
+  #   enabled: true
+  #   type: rss
+  #   url: https://www.cisa.gov/news-events/cybersecurity-advisories
+  #   priority: 2
+  #   notes: Potentially useful, but may overlap KEV and GTI. Verify feed/API endpoint before enabling.
+
+  # - id: unit42
+  #   name: Palo Alto Unit 42
+  #   enabled: true
+  #   type: rss
+  #   url: https://unit42.paloaltonetworks.com/
+  #   priority: 2
+  #   notes: Strong incident/threat research. Enable only if broader threat-campaign coverage is desired.
+
+  # - id: project_zero
+  #   name: Google Project Zero
+  #   enabled: true
+  #   type: rss
+  #   url: https://googleprojectzero.blogspot.com/
+  #   priority: 2
+  #   notes: High-quality vulnerability research but lower event frequency; useful if deep exploit research is desired.
