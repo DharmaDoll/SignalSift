@@ -1,9 +1,9 @@
 name: SignalSift Security Profile
 
 on:
-  schedule:
-    - cron: "17,47 * * * *"
-      timezone: "Asia/Tokyo"
+  #schedule:
+  #  - cron: "17,47 * * * *"
+  #   timezone: "Asia/Tokyo"
 
   workflow_dispatch:
 
