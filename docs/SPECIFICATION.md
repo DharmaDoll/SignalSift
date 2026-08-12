@@ -453,6 +453,8 @@ Security Profileでは以下を定義する。
 
 単なるCVE言及は `vulnerability` を成立させない。単なるAI製品発表は `ai_security` を成立させない。
 
+`supply_chain` には、`npm worm`、`poisoned package(s)`、`package poisoning` のように、package ecosystemと侵害の両方を一つの複合表現で示す語を含める。単独の `npm`、`package`、`worm` は誤検知を避けるため主題成立語にせず、watch termまたは他の強い文脈と組み合わせて扱う。
+
 通常記事の合計得点は次の式で求める。
 
 ```text
@@ -676,7 +678,7 @@ URL
 
 - 記事を得点の降順、公開日時の降順、`article_key` の昇順で安定ソートする。
 - 各記事には分類、タイトル、情報源、主要なWhy、URLを含める。
-- Slackのペイロード上限を超える場合だけ複数ダイジェストへ分割する。
+- Slackの外部上限に余裕を持たせるため、SignalSiftはJSON payloadを35,000 bytes以下に制限し、超える場合だけ複数ダイジェストへ分割する。
 - 1つのダイジェスト送信が成功したら、そのダイジェストに含まれた記事だけを状態へ追加する。
 - 後続ダイジェストが失敗しても成功済み分を巻き戻さない。
 

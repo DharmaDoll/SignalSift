@@ -43,44 +43,44 @@
 
 ## 3. CISA KEVとsource pre-filter
 
-- [ ] 静的な `cisa_kev` adapter registryを作り、動的plugin loadingを使わない。
-- [ ] KEV JSONを検証し、CVE、title、dateAdded、説明、対応、製品情報を正規化する。
-- [ ] `force_notify_new_entries` が閾値だけをバイパスし、cutoff・重複・Slack成功順序を守るようにする。
-- [ ] NFKC、case-insensitive、英単語境界、日本語部分一致の共通照合を実装する。
-- [ ] source `exclude` を `include_any` より優先して評価する。
-- [ ] KEVの新旧境界と、Wiz・StepSecurity・Aikidoのpre-filterをテストする（AC-15）。
+- [x] 静的な `cisa_kev` adapter registryを作り、動的plugin loadingを使わない。
+- [x] KEV JSONを検証し、CVE、title、dateAdded、説明、対応、製品情報を正規化する。
+- [x] `force_notify_new_entries` が閾値だけをバイパスし、cutoff・重複・Slack成功順序を守るようにする。
+- [x] NFKC、case-insensitive、英単語境界、日本語部分一致の共通照合を実装する。
+- [x] source `exclude` を `include_any` より優先して評価する。
+- [x] KEVの新旧境界と、Wiz・StepSecurity・Aikidoのpre-filterをテストする（AC-15）。
 
 ## 4. 決定論的フィルターとscore
 
-- [ ] `any` と `all_groups` を実装し、同一ruleを1回だけ加点する。
-- [ ] supply-chain、vulnerability、AI-securityの複合条件を設定から評価する。
-- [ ] negative term、source priority、3種のboost、watch termを仕様どおり計算する。
-- [ ] 通常記事に主題rule成立とthreshold到達の両方を要求する。
-- [ ] `why_matched` と主分類を重複なしの安定順で生成する。
-- [ ] supply-chain事件とマーケティング記事をテストする（AC-01、AC-02）。
-- [ ] 悪用脆弱性と通常CVEをテストする（AC-03、AC-04）。
-- [ ] MCP/AI securityと一般AI記事をテストする（AC-05、AC-06）。
+- [x] `any` と `all_groups` を実装し、同一ruleを1回だけ加点する。
+- [x] supply-chain、vulnerability、AI-securityの複合条件を設定から評価する。
+- [x] negative term、source priority、3種のboost、watch termを仕様どおり計算する。
+- [x] 通常記事に主題rule成立とthreshold到達の両方を要求する。
+- [x] `why_matched` と主分類を重複なしの安定順で生成する。
+- [x] supply-chain事件とマーケティング記事をテストする（AC-01、AC-02）。
+- [x] 悪用脆弱性と通常CVEをテストする（AC-03、AC-04）。
+- [x] MCP/AI securityと一般AI記事をテストする（AC-05、AC-06）。
 
 ## 5. 記事キー、初回cutoff、状態
 
-- [ ] URLのhost、port、fragment、tracking query、query順、末尾slashを正規化する。
-- [ ] GUID、canonical URL、source ID + titleの順でSHA-256 article keyを作る。
-- [ ] 保存状態と同一実行内の両方で記事重複を除外する。
-- [ ] version 1、`initial_cutoff_at`、`items` の状態読込・検証を実装する。
-- [ ] 初回cutoff、日時不明、24時間超の未来日時を仕様どおり扱う。
-- [ ] Slack成功記事だけを追加し、180日超の記録をpruneする。
-- [ ] JSONを安定形式かつ原子的に保存し、破損状態へ空でfallbackしない。
-- [ ] 重複、URL正規化、破損、prune、2回目のbackfill防止をテストする（AC-07、AC-09、AC-10、AC-16～AC-19）。
+- [x] URLのhost、port、fragment、tracking query、query順、末尾slashを正規化する。
+- [x] GUID、canonical URL、source ID + titleの順でSHA-256 article keyを作る。
+- [x] 保存状態と同一実行内の両方で記事重複を除外する。
+- [x] version 1、`initial_cutoff_at`、`items` の状態読込・検証を実装する。
+- [x] 初回cutoff、日時不明、24時間超の未来日時を仕様どおり扱う。
+- [x] Slack成功記事だけを追加し、180日超の記録をpruneする。
+- [x] JSONを安定形式かつ原子的に保存し、破損状態へ空でfallbackしない。
+- [x] 重複、URL正規化、破損、prune、2回目のbackfill防止をテストする（AC-07、AC-09、AC-10、AC-16～AC-19）。
 
 ## 6. Slack通知
 
-- [ ] Slack表示文字をescapeし、意図しないmentionとHTML・制御文字を抑止する。
-- [ ] 分類、title、source、why、日時、300文字以内の要約、URLを個別通知へ整形する。
-- [ ] 規定件数超過時にscore・日時・article keyの安定順でdigestを作る。
-- [ ] payload上限時だけdigestを決定論的に分割する。
-- [ ] `SLACK_WEBHOOK_URL` へPOSTし、2xxだけを成功にする。
-- [ ] 個別・digestの部分失敗を返し、失敗記事を通知済みにしない。
-- [ ] escape、timeout、非2xx、digest切替と分割をテストする（AC-08、AC-14）。
+- [x] Slack表示文字をescapeし、意図しないmentionとHTML・制御文字を抑止する。
+- [x] 分類、title、source、why、日時、300文字以内の要約、URLを個別通知へ整形する。
+- [x] 規定件数超過時にscore・日時・article keyの安定順でdigestを作る。
+- [x] payload上限時だけdigestを決定論的に分割する。
+- [x] `SLACK_WEBHOOK_URL` へPOSTし、2xxだけを成功にする。
+- [x] 個別・digestの部分失敗を返し、失敗記事を通知済みにしない。
+- [x] escape、timeout、非2xx、digest切替と分割をテストする（AC-08、AC-14）。
 
 ## 7. run-once CLIと障害分離
 
