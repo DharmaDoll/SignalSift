@@ -127,6 +127,20 @@ Prefer a small generic fetcher or a source-specific adapter in code instead.
 
 The primary execution environment is GitHub Actions.
 
+Local developer execution is also a supported operating mode for debugging and manual verification.
+
+Use `uv` as the standard Python environment and dependency workflow:
+
+```bash
+uv sync --locked
+uv run --locked pytest
+uv run --locked signalsift run --dry-run --state-path .local/state/notified.json
+```
+
+`uv sync` owns the repository-local `.venv`. Commit `uv.lock`; do not make `pip install -e .` or a separate `requirements.txt` the standard workflow. IDEs and debuggers may use `.venv/bin/python`.
+
+Local real-delivery tests must use a test Slack webhook and a local state path. Dry-run must not send Slack messages or modify state. Do not add an internal or workstation scheduler.
+
 The application itself must be a run-once CLI:
 
 ```bash
@@ -630,6 +644,7 @@ Requirements:
 - `schedule`
 - `workflow_dispatch`
 - Python 3.12+
+- `uv` with a committed `uv.lock`
 - repository secret `SLACK_WEBHOOK_URL`
 - `permissions: contents: write`
 - `concurrency`
@@ -683,14 +698,21 @@ Preferred structure:
 
 ```text
 .
+├── .gitignore
+├── .github/
+│   └── workflows/
+│       └── signalsift.yml
 ├── AGENTS.md
-├── CODEX_PROMPT.md
 ├── README.md
+├── LICENSE
+├── pyproject.toml
+├── uv.lock
+├── plan.md
 ├── config/
 │   ├── sources.yaml
 │   └── filters.yaml
 ├── docs/
-│   └── DESIGN.md
+│   └── SPECIFICATION.md
 ├── src/
 │   └── signalsift/
 │       ├── cli.py
@@ -705,6 +727,12 @@ Preferred structure:
 ```
 
 Do not split modules further unless a concrete complexity appears.
+
+Documentation roles are intentionally limited:
+
+- `README.md`: user-facing setup and operation
+- `docs/SPECIFICATION.md`: the single source of truth for product behavior and design decisions
+- `plan.md`: implementation progress; remove it after the MVP is complete if it no longer adds value
 
 ---
 

@@ -86,6 +86,27 @@ Slack Incoming Webhook
 
 No continuously running server is required.
 
+## Local development with `uv`
+
+Local execution is a supported development and debugging workflow. The project uses `uv` and a repository-local `.venv`; do not maintain a separate `requirements.txt` or use `pip install -e .` as the standard setup.
+
+```bash
+uv sync --locked
+uv run --locked pytest
+uv run --locked signalsift run --dry-run --state-path .local/state/notified.json
+```
+
+`uv sync --locked` creates or updates `.venv`. IDEs and debuggers can use `.venv/bin/python` directly.
+
+Dry-run fetches and evaluates items but does not call Slack or modify notification state. For an end-to-end local run, export a test-channel webhook and keep state separate from the GitHub Actions ledger:
+
+```bash
+export SLACK_WEBHOOK_URL="..."
+uv run --locked signalsift run --state-path .local/state/notified.json
+```
+
+Do not commit `.venv`, `.local`, `.env`, or webhook values. Local execution remains run-once; scheduling belongs to GitHub Actions.
+
 ## Security Profile configuration
 
 Only two operator-facing configuration files are used:

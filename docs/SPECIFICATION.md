@@ -10,7 +10,7 @@
 
 ## 1. 文書の目的
 
-本書は、SignalSiftのMVPを設計、実装、試験、運用するための規範的な仕様を定義する。
+本書は、SignalSiftのMVPを設計、実装、試験、運用するための規範的な仕様を定義する。本書を製品仕様と主要な設計判断の唯一の正本とし、別の設計文書は作成しない。
 
 本書中の「必須」「する」「しない」はMVPの必須要件を表す。「将来」はMVPの対象外を表す。既存資料と本書が矛盾する場合は、プロダクト原則については `AGENTS.md`、MVPの具体的なアプリケーション挙動については本書を優先する。
 
@@ -38,6 +38,7 @@ SignalSiftは、厳選した公開情報源から記事を取得し、決定論�
 ### 3.1 MVPに含むもの
 
 - Python 3.12以上で動作する `signalsift run` CLI
+- `uv` とプロジェクト内 `.venv` によるローカル開発・デバッグ実行
 - YAMLによる情報源およびフィルターポリシー設定
 - RSS 2.0、Atom、RSS 1.0/RDFの汎用取得と正規化
 - CISA KEV用の小さなJSONアダプター
@@ -109,6 +110,15 @@ Fetch → Normalize → Source pre-filter → Score → Dedupe → Slack
 
 Coreの共通モデルにCVE専用必須フィールドなどのセキュリティ固有前提を持ち込まない。
 
+### 5.1 主要な設計判断
+
+- **設定とコードの境界**: 運用者が変更する情報源、閾値、キーワードはYAMLへ置き、Feed解析や変換手順はコードへ置く。YAMLをCSS selector、XPath、JSONPath、変換pipeline等のプログラミング言語にしない。
+- **決定論を優先**: MVPの採否にLLMを使わない。費用と外部依存を抑え、同じ入力から同じscoreと `why_matched` を再現できるようにする。
+- **汎用性の境界**: Coreは共通モデルと小さな責務境界によって再利用可能にするが、将来用途のplugin/profile frameworkは先に作らない。
+- **記事単位の重複排除**: 同じCVEを扱う異なる高品質記事はそれぞれ有用なため、MVPはイベントではなく記事を重複排除する。
+- **stateブランチ**: GitHub-hosted runnerをまたぐ最小の永続化手段として採用する。外部DBを不要にし、履歴の確認と復旧をGitで行えるようにする。
+- **at-least-once配信**: 稀な重複より通知の恒久的欠落を避けるため、Slack成功後に状態を更新する。
+
 ## 6. 実行インターフェース
 
 ### 6.1 CLI
@@ -116,7 +126,7 @@ Coreの共通モデルにCVE専用必須フィールドなどのセキュリテ�
 MVPが公開するコマンドは次の1つとする。
 
 ```bash
-signalsift run
+signalsift run [--dry-run] [--state-path PATH]
 ```
 
 コマンドは1回の処理サイクルを実行して終了する。待機、ループ、スケジューリングは行わない。
@@ -136,21 +146,43 @@ state/notified.json
 
 GitHub Actionsは `state` ブランチの内容を上記パスへ準備してからCLIを起動し、CLI終了後に変更がある場合だけ同ブランチへコミット・pushする。Git操作そのものをCoreのドメイン処理へ混在させない。
 
-### 6.2 環境変数
+`--state-path` は状態ファイルのパスを上書きする。GitHub Actionsでは既定値を使い、ローカルでは `.local/state/notified.json` を推奨する。
+
+`--dry-run` は取得、正規化、フィルター、score、重複判定、通知本文生成までを実行するが、Slackへ送信せず、状態ファイルも作成・変更しない。Webhook URLは不要とし、採用候補のtitle、source、score、`why_matched`、通知予定形式を安全なプレーンテキストで標準出力へ表示する。取得・解析等の障害に対する終了コードは通常実行と同じとする。
+
+### 6.2 ローカル開発・デバッグ
+
+GitHub Actionsを本番実行環境としつつ、開発者PCから同じCLIを実行できることを必須とする。Python環境と依存関係は `uv` で管理し、`pip install -e .` や手動作成したrequirementsファイルを標準手順にしない。
+
+```bash
+uv sync --locked
+uv run --locked pytest
+uv run --locked signalsift run --dry-run --state-path .local/state/notified.json
+```
+
+- `uv sync --locked` がリポジトリ直下の `.venv` を作成・同期する。
+- IDEとデバッガーは `.venv/bin/python` をinterpreterとして選択できる。
+- `uv.lock` をGitへcommitし、ローカルとGitHub Actionsで同じlockを使う。
+- `.venv/` と `.local/` はGit管理対象外とする。
+- 実Slackへ送るローカル実行では、テスト用Webhookとローカル専用state pathを使う。
+- `.env` をアプリケーションが自動読込する機能はMVPに追加しない。Secretはshell環境またはIDEの安全な環境変数設定から渡す。
+- ローカル実行は手動のrun-onceに限定し、PC向けの常駐schedulerを実装しない。
+
+### 6.3 環境変数
 
 | 変数 | 必須 | 用途 | 取扱い |
 |---|---:|---|---|
-| `SLACK_WEBHOOK_URL` | はい | Slack Incoming Webhook送信先 | GitHub Actions Secretsから注入し、ログへ出力しない |
+| `SLACK_WEBHOOK_URL` | 通常実行では必須 | Slack Incoming Webhook送信先 | Actions Secretsまたはローカル環境から注入し、ログへ出力しない。dry-runでは不要 |
 
 MVPではLLM用APIキーや外部DB接続情報を要求しない。
 
-### 6.3 終了コード
+### 6.4 終了コード
 
 | コード | 意味 |
 |---:|---|
 | `0` | 全有効情報源の処理、必要なSlack送信、必要な状態保存が成功した |
 | `1` | 取得・Slack送信・状態保存のいずれかに部分障害または全体障害があった |
-| `2` | 設定不正、必須秘密情報の欠落など、処理開始不能な利用・構成エラー |
+| `2` | 設定不正、通常実行での必須秘密情報の欠落など、処理開始不能な利用・構成エラー |
 
 一部情報源や一部Slack送信が失敗しても、残りの処理と成功分の状態更新を完了してから終了する。状態永続化に失敗した場合は必ず非ゼロで終了する。
 
@@ -214,7 +246,7 @@ MVPでは、アダプターなしの汎用JSONスキーマは定義しない。`
 | 項目 | 意味 |
 |---|---|
 | `notification` | 通知閾値、初回期間、状態保持期間、個別通知上限 |
-| `negative_terms` | 明白なノイズ記事を減点する語 |
+| `negative_terms` | 通常・軽度の減点値と、明白なノイズ記事を減点する語 |
 | `rules` | 主題を成立させる基本ルール |
 | `boosts` | 緊急性、深刻度、実用性による加点 |
 | `watch_terms` | 組織内で関心が高い技術語による加点 |
@@ -230,6 +262,15 @@ MVPでは、アダプターなしの汎用JSONスキーマは定義しない。`
 | `max_individual_messages_per_run` | 5 | 個別通知を用いる最大採用件数 |
 
 数値制約は、閾値1以上、初回期間1以上、保持期間1以上、個別通知上限1以上とする。
+
+`negative_terms` は次の単純な構造とし、減点値をコードへ固定しない。
+
+| 項目 | 型 | 意味 |
+|---|---|---|
+| `score` | negative integer | 通常のnegative termに1つ以上一致した場合の減点 |
+| `terms` | string[] | 通常のnegative term |
+| `mild.score` | negative integer | 軽度のnegative termだけに一致した場合の減点 |
+| `mild.terms` | string[] | product announcement等の軽度negative term |
 
 ## 8. 共通データモデル
 
@@ -383,10 +424,10 @@ title + summary + content + categories + external_ids
 
 ### 11.2 負の語による減点
 
-`negative_terms` は、正の主題シグナルを持つ記事を一律に破棄せず、マーケティング等の明白なノイズを閾値未満へ下げるために用いる。
+`negative_terms` は、正の主題シグナルを持つ記事を一律に破棄せず、マーケティング等の明白なノイズを閾値未満へ下げるために用いる。減点値と語はSecurity Profile設定から読み込む。
 
-- `product announcement` または `release notes` だけに一致した場合は記事ごとに −3点とする。
-- 上記以外の負の語に1つ以上一致した場合は記事ごとに −5点とする。
+- `negative_terms.mild.terms` だけに一致した場合は、記事ごとに `negative_terms.mild.score`（現在 −3点）を適用する。
+- `negative_terms.terms` に1つ以上一致した場合は、記事ごとに `negative_terms.score`（現在 −5点）を適用する。
 - 複数の負の語が一致しても重複減点しない。
 - −3対象と−5対象の両方に一致した場合は −5だけを適用する。
 - 一致した場合は `why_matched` に `negative:<term>:<penalty>` を含め、得点を再現可能にする。
@@ -496,6 +537,7 @@ initial_cutoff_at = 初回実行開始時刻 - initial_lookback_hours
 
 - RSS等は `published_at` を使用する。
 - CISA KEVは `dateAdded` を使用する。
+- CISA KEVの `dateAdded` は日付精度しかないため、eligibility判定では `dateAdded >= initial_cutoff_at` のUTC日付部分として比較する。正規化・表示用の `published_at` は同日00:00:00 UTCを用いる。
 - `published_at` が不明な記事は、過去記事か新着記事かを安全に判定できないため除外し、ログに `published_at=unknown` を記録する。
 - 未来日時が現在より24時間を超えている記事は不正データとしてスキップする。
 
@@ -576,6 +618,8 @@ feed IDが恒久IDではなく毎回変わると明らかな場合は使用せ�
 
 記事はSlackが成功を返した後だけ状態へ追加する。送信前、送信失敗、タイムアウト時には追加しない。
 
+dry-runでは、既存状態を重複判定のために読み込んでよいが、pruneを含むいかなる状態変更もファイルへ保存しない。
+
 個別通知では各成功記事を追加する。ダイジェスト通知では、ダイジェスト全体が成功した後に、そのダイジェストへ実際に含めた全記事を追加する。
 
 ### 14.4 保持期間
@@ -648,7 +692,7 @@ URL
 1回の実行は次の順序を厳守する。
 
 1. 設定を読み込み、完全に検証する。
-2. `SLACK_WEBHOOK_URL` の存在を確認する。
+2. 通常実行の場合だけ `SLACK_WEBHOOK_URL` の存在を確認する。
 3. 通知済み状態を読み込む。
 4. 保持期限を過ぎた状態をpruneする。
 5. 有効な情報源を設定順に処理する。
@@ -658,9 +702,9 @@ URL
 9. グローバルルールとスコアを評価する。
 10. `article_key` を生成し、通知済み・実行内重複を除外する。
 11. 採用記事を安定ソートする。
-12. 個別またはダイジェストでSlackへ送る。
-13. 成功した記事だけ状態へ追加する。
-14. 状態変更があれば原子的にローカルファイルへ書く。
+12. 通常実行では個別またはダイジェストでSlackへ送り、dry-runでは通知予定内容を標準出力へ表示する。
+13. 通常実行で成功した記事だけ状態へ追加する。
+14. 通常実行で状態変更があれば原子的にローカルファイルへ書く。
 15. 実行集計をログ出力して終了する。
 16. GitHub Actionsが状態差分を `state` ブランチへ保存する。
 
@@ -698,7 +742,7 @@ URL
 |---|---|
 | Trigger | `schedule` と `workflow_dispatch` |
 | Cron | `17,47 * * * *` |
-| Runtime | Python 3.12以上 |
+| Runtime | Python 3.12以上、`uv` |
 | Permissions | `contents: write` のみを明示 |
 | Concurrency group | `signalsift-state` |
 | Cancel in progress | `false` |
@@ -708,12 +752,13 @@ URL
 ワークフローは概ね次を行う。
 
 1. 実行対象commitをcheckoutする。認証情報の不要な永続化を避ける設定を用いる。
-2. Pythonとロック済み依存関係を準備する。
+2. commit SHAで固定した公式setup actionを用いて `uv` とPython 3.12を準備する。
 3. `state` ブランチから状態ファイルを取得する。ブランチ不在は初回として扱う。
-4. `signalsift run` を実行する。
-5. CLIが部分障害を報告しても、成功済み通知の状態保存を試みる。
-6. 状態ファイルに差分がある場合だけ `state` ブランチへcommit・pushする。
-7. CLIまたは状態保存が失敗していればジョブを失敗として終了する。
+4. `uv sync --locked` と `uv run --locked pytest` でlock済み環境とテストを確認する。
+5. 必要ならdev依存を除いた環境へ同期し、`uv run --locked signalsift run` を実行する。
+6. CLIが部分障害を報告しても、成功済み通知の状態保存を試みる。
+7. 状態ファイルに差分がある場合だけ `state` ブランチへcommit・pushする。
+8. CLIまたは状態保存が失敗していればジョブを失敗として終了する。
 
 Actions Cacheを通知履歴の正本にしない。
 
@@ -728,6 +773,8 @@ Actions Cacheを通知履歴の正本にしない。
 - Webhook URLをリポジトリ、状態、例外メッセージ、ログへ保存しない。
 - GitHub Actionsの権限は `contents: write` に限定し、不要な権限を付与しない。
 - 依存関係はバージョンを固定またはロックし、CIで再現可能にする。
+- `uv.lock` を正本とし、ローカルとActionsでは `--locked` を指定して暗黙の再lockを防ぐ。
+- `.venv/`、`.local/`、`.env` をcommitしない。
 - GitHub Actionsはcommit SHAで固定し、更新時に明示レビューすることを推奨する。
 - 取得コンテンツをHTMLとして再配信せず、Slackには安全なプレーンテキストを送る。
 
@@ -798,6 +845,7 @@ Slack成功後かつ状態永続化前の障害では重複が起こり得る。
 | AC-17 | 状態JSONが破損 | 空状態で続行せず安全に失敗する |
 | AC-18 | 180日より古い状態 | pruneされ、状態差分が保存される |
 | AC-19 | 初回に除外した古いFeed記事を2回目にも取得 | 保存した基準日時により引き続き通知されない |
+| AC-20 | `--dry-run` で採用記事がある | Webhookなしで候補を表示し、Slack送信と状態変更を行わない |
 
 ### 22.2 単体試験の重点
 
@@ -812,6 +860,7 @@ Slack成功後かつ状態永続化前の障害では重複が起こり得る。
 - 状態保持期間の境界値
 - CISA KEVフィールドの正規化
 - HTTP timeout、サイズ、redirect、非2xx
+- dry-runとcustom state pathの非破壊性
 
 ### 22.3 テスト禁止事項
 
@@ -836,6 +885,7 @@ MVPは以下をすべて満たしたとき完成とする。
 - 1情報源の障害で他情報源を停止しない。
 - GitHub-hosted runnerをまたいで状態が維持される。
 - scheduleとworkflow_dispatchの両方で動作する。
+- `uv sync --locked` でローカル `.venv` を再現し、dry-runとテストを実行できる。
 - 必須受入ケースがローカルフィクスチャで成功する。
 - 外部DB、常駐サービス、必須LLMを必要としない。
 
@@ -872,7 +922,6 @@ LLMを追加する場合もfeature flagで無効化可能とし、決定論的�
 
 - `AGENTS.md`: プロジェクト原則と実装制約
 - `README.md`: プロダクト概要と運用モデル
-- `docs/DESIGN.md`: アーキテクチャ判断
 - `config/sources.yaml`: 現行Security Profileの情報源
 - `config/filters.yaml`: 現行Security Profileの選定ポリシー
-- `CODEX_PROMPT.md`: MVP実装方針と完了基準
+- `plan.md`: 仕様を実装するための進捗チェックリスト
