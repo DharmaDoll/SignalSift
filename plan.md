@@ -11,8 +11,8 @@
 
 ## 0. 人間レビューとMVP仕様確定
 
-- [x] Security Profileの有効情報源、watch term、通知閾値7を承認する。
-- [x] negative termの−5／−3を `filters.yaml` に持たせる。
+- [x] Supply Chain VulnerabilityとAI Securityの2Profile、有効情報源、通知閾値7を承認する。
+- [x] negative termの−5／−3を各Profile設定に持たせる。
 - [x] CISA KEVを強制通知し、日付だけの `dateAdded` はcutoffとUTC日付単位で比較する。
 - [x] `initial_cutoff_at`、日時不明記事の除外、180日保持を承認する。
 - [x] source部分障害時に処理を継続し、最終的にActionsを失敗表示する方針を承認する。
@@ -25,10 +25,10 @@
 - [x] `uv` を標準toolとし、dev groupを含む最小依存関係と `uv.lock` を変更へ含める。
 - [x] `uv sync --locked` で `.venv` を再現し、IDEから `.venv/bin/python` を選べることを確認する。
 - [x] `signalsift` packageと最小のtest構成を作り、残りのmoduleは担当phaseで必要になった時だけ追加する。
-- [x] source、source filter、notification、rule、boost、watch termの型付き設定モデルを作る。
+- [x] source、profile、notification、rule、任意boost/watch termの型付き設定モデルを作る。
 - [x] 必須値、型、未知field、HTTPS URL、priority、source ID重複、adapter名を検証する。
 - [x] `NormalizedItem`、評価結果、source別集計モデルを実装する。
-- [x] 現行2設定ファイルの正常系と代表的な設定不正をテストする。
+- [x] 現行3設定ファイルの正常系と代表的な設定不正をテストする。
 - [x] `uv run --locked signalsift run --help` と `uv run --locked pytest` がclean環境で動くことを確認する。
 
 ## 2. 制限付きHTTPと汎用Feed取得
@@ -45,21 +45,27 @@
 
 - [x] 静的な `cisa_kev` adapter registryを作り、動的plugin loadingを使わない。
 - [x] KEV JSONを検証し、CVE、title、dateAdded、説明、対応、製品情報を正規化する。
-- [x] `force_notify_new_entries` が閾値だけをバイパスし、cutoff・重複・Slack成功順序を守るようにする。
+- [x] Supply Chain Vulnerability ProfileのCISA強制採用が閾値だけをバイパスし、AI Profileには適用されないようにする。
 - [x] NFKC、case-insensitive、英単語境界、日本語部分一致の共通照合を実装する。
 - [x] source `exclude` を `include_any` より優先して評価する。
 - [x] KEVの新旧境界と、Wiz・StepSecurity・Aikidoのpre-filterをテストする（AC-15）。
+- [x] FlattはRSS全文ノイズを避け、トップページの記事カードだけを専用adapterで正規化する（AC-21）。
+- [x] GTIは全文入りsummaryを保持しつつ、採否を冒頭500文字へ制限する（AC-24）。
+- [x] StepSecurity/Aikidoの明白な企業更新・比較記事をsource filterで除外する。
 
 ## 4. 決定論的フィルターとscore
 
 - [x] `any` と `all_groups` を実装し、同一ruleを1回だけ加点する。
-- [x] supply-chain、vulnerability、AI-securityの複合条件を設定から評価する。
-- [x] negative term、source priority、3種のboost、watch termを仕様どおり計算する。
+- [x] Supply Chain Vulnerabilityの短い単純ORと、AI Securityの2群ANDを設定から評価する。
+- [x] negative termとsource priorityを計算し、未使用boost/watch辞書をProfile設定から除く。
 - [x] 通常記事に主題rule成立とthreshold到達の両方を要求する。
 - [x] `why_matched` と主分類を重複なしの安定順で生成する。
 - [x] supply-chain事件とマーケティング記事をテストする（AC-01、AC-02）。
 - [x] 悪用脆弱性と通常CVEをテストする（AC-03、AC-04）。
 - [x] MCP/AI securityと一般AI記事をテストする（AC-05、AC-06）。
+- [x] source-scoped ruleでJPCERTの通常脆弱性と強いシグナルを分離する。
+- [x] `CVE`/`CVEs`と`vulnerability`/`vulnerabilities`を明示的に扱う。
+- [x] bare `agent`と調査手段としてのbare `AI`をAI文脈にしない（AC-25）。
 
 ## 5. 記事キー、初回cutoff、状態
 
@@ -71,6 +77,8 @@
 - [x] Slack成功記事だけを追加し、180日超の記録をpruneする。
 - [x] JSONを安定形式かつ原子的に保存し、破損状態へ空でfallbackしない。
 - [x] 重複、URL正規化、破損、prune、2回目のbackfill防止をテストする（AC-07、AC-09、AC-10、AC-16～AC-19）。
+- [x] RDF `rdf:about`をentry IDとして扱い、文書内fragmentの項目を区別する（AC-23）。
+- [x] JPCERTでは広いCVE/vulnerability ruleを除外し、強いシグナルだけのsource-scoped ruleを適用する。
 
 ## 6. Slack通知
 
@@ -78,19 +86,21 @@
 - [x] 分類、title、source、why、日時、300文字以内の要約、URLを個別通知へ整形する。
 - [x] 規定件数超過時にscore・日時・article keyの安定順でdigestを作る。
 - [x] payload上限時だけdigestを決定論的に分割する。
-- [x] `SLACK_WEBHOOK_URL` へPOSTし、2xxだけを成功にする。
+- [x] Profile専用Slack WebhookへPOSTし、2xxだけを成功にする境界を実装する。
 - [x] 個別・digestの部分失敗を返し、失敗記事を通知済みにしない。
 - [x] escape、timeout、非2xx、digest切替と分割をテストする（AC-08、AC-14）。
 
 ## 7. run-once CLIと障害分離
 
 - [ ] `signalsift run` で設定、Secret、状態を起動前に検証する。
-- [ ] `--state-path` と、Webhook送信・状態書込を行わない `--dry-run` を実装する。
+- [x] `--state-path` と、Webhook送信・状態書込を行わない `--dry-run` を実装する。
 - [ ] Fetch → Normalize → pre-filter → cutoff → Score → Dedupe → Slack → Stateの順で統合する。
-- [ ] 有効sourceだけを処理し、1sourceの失敗後も残りを継続する。
+- [x] 有効sourceだけを処理し、1sourceの失敗後も残りを継続する。
 - [ ] Slack失敗後も残りを送信し、成功分の状態を保存する。
 - [ ] 全成功0、部分・永続化失敗1、構成エラー2の終了codeを実装する。
-- [ ] sourceごとのfetch、candidate、match、duplicate、notify件数をログに出す。
+- [x] sourceごとのfetch、candidate、match、duplicate、notify件数をログに出す。
+- [x] source障害を秘密や本文なしの1件のSlack運用通知へ整形・送信する境界を実装する。
+- [ ] 通常CLIでsource障害の運用通知を呼び出し、dry-runではpreviewだけにする（AC-22）。
 - [ ] Secret、レスポンス全文、記事本文全文をログへ出さない。
 - [ ] source障害、Slack失敗、成功後状態更新を統合テストする（AC-08、AC-12、AC-13）。
 
@@ -107,8 +117,8 @@
 
 ## 9. 受入試験、セキュリティ、文書
 
-- [ ] RSS、Atom、RDF、KEV、状態、Slack応答のfixtureを揃える。
-- [ ] AC-01～AC-20の各項目が少なくとも1つの自動テストへ対応することを確認する。
+- [ ] RSS、Atom、RDF、Flatt HTML、KEV、状態、Slack応答のfixtureを揃える。
+- [ ] AC-01～AC-22の各項目が少なくとも1つの自動テストへ対応することを確認する。
 - [ ] 外部networkと実Webhookなしで全テストを成功させる。
 - [ ] 固定時計で実行順に依存しないことと、同じ入力の決定性を確認する。
 - [ ] HTTPS、XML、size、redirect、Slack escape、Secret非露出をレビューする。
@@ -133,5 +143,5 @@
 - [ ] 重要な3領域だけを説明可能なscoreで低ノイズ通知する。
 - [ ] Slack成功前に状態を更新せず、正常時に同一記事を再通知しない。
 - [ ] runnerをまたいでstateを維持し、初回の過去記事をbackfillしない。
-- [ ] AC-01～AC-20がローカルfixtureだけで成功する。
+- [ ] AC-01～AC-22がローカルfixtureだけで成功する。
 - [ ] 外部DB、常駐server、内部scheduler、必須LLM、plugin frameworkを含まない。

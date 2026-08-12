@@ -18,15 +18,14 @@ Notify
 
 The engine is intentionally generic.
 
-This repository initially ships with a **Security Profile**.
+This repository ships with two focused security profiles.
 
-## Security Profile
+## Profiles
 
-The current profile focuses on:
+The profiles separate:
 
-- software supply-chain attacks
-- important / actively exploited vulnerabilities
-- LLM / AI-agent / MCP security
+- **Supply Chain Vulnerability**: software supply-chain attacks and vulnerabilities
+- **AI Security**: AI / LLM / Agent / MCP / Skills vulnerabilities and attacks
 
 Its operating principle is simple:
 
@@ -65,7 +64,7 @@ For now:
 ```text
 SignalSift Core
 +
-Security Profile
+Supply Chain Vulnerability / AI Security profiles
 +
 Slack
 ```
@@ -93,30 +92,37 @@ Local execution is a supported development and debugging workflow. The project u
 ```bash
 uv sync --locked
 uv run --locked pytest
-uv run --locked signalsift run --dry-run --state-path .local/state/notified.json
+uv run --locked signalsift run --profile supply-chain-vulnerability --dry-run --state-path .local/state/supply_chain_vulnerability.json
+uv run --locked signalsift run --profile ai-security --dry-run --state-path .local/state/ai_security.json
+uv run --locked signalsift run --profile supply-chain-vulnerability --dry-run --review-lookback-hours 168 --state-path .local/state/supply_chain_vulnerability.json
 ```
 
 `uv sync --locked` creates or updates `.venv`. IDEs and debuggers can use `.venv/bin/python` directly.
 
-Dry-run fetches and evaluates items but does not call Slack or modify notification state. For an end-to-end local run, export a test-channel webhook and keep state separate from the GitHub Actions ledger:
+Dry-run fetches and evaluates items but does not call Slack or modify notification state. The optional `--review-lookback-hours` mode ignores notification history in memory and prints both selected and rejected recent items for filter review. It does not change the production `initial_lookback_hours: 24` policy.
+
+Live Slack delivery is not wired into the CLI yet. After that implementation is complete, an end-to-end local run will use a test-channel webhook and state kept separate from the GitHub Actions ledger:
 
 ```bash
-export SLACK_WEBHOOK_URL="..."
-uv run --locked signalsift run --state-path .local/state/notified.json
+export SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY="..."
+export SLACK_WEBHOOK_URL_AI_SECURITY="..."
+uv run --locked signalsift run --profile supply-chain-vulnerability --state-path .local/state/supply_chain_vulnerability.json
+uv run --locked signalsift run --profile ai-security --state-path .local/state/ai_security.json
 ```
 
 Do not commit `.venv`, `.local`, `.env`, or webhook values. Local execution remains run-once; scheduling belongs to GitHub Actions.
 
-## Security Profile configuration
+## Profile configuration
 
-Only two operator-facing configuration files are used:
+Sources are shared while filtering, webhook selection, and notification history are separable:
 
 ```text
 config/sources.yaml
-config/filters.yaml
+config/supply_chain_vulnerability.yaml
+config/ai_security.yaml
 ```
 
-They currently represent the Security Profile.
+The two profiles use independent state files and can deliver to independent Slack webhooks.
 
 ### `sources.yaml`
 
@@ -126,20 +132,34 @@ Defines:
 - fetch URL
 - fetch type
 - source priority
-- small source-specific noise filters
+- whether full feed content participates in matching
+- optional summary-character limit used only for matching
+- small source-specific noise filters shared by both profiles
 
-### `filters.yaml`
+Flatt, Wiz, StepSecurity, and Aikido currently have only obvious publication-specific exclusions. Topic selection remains in the two profile files so an AI Security candidate is not removed by Supply Chain Vulnerability policy.
+
+GitHub Security Blog uses its official RSS feed with `match_content: false`; its title, short excerpt, categories, and external IDs are evaluated while the long feed body is excluded from matching.
+
+Google Threat Intelligence also excludes `content` and evaluates only the first 500 summary characters. Its RSS description contains the full article, so this keeps lead context while avoiding incidental matches deep in the body.
+
+### `supply_chain_vulnerability.yaml`
 
 Defines:
 
-- supply-chain indicators
-- vulnerability exploitability indicators
-- AI / LLM security compound rules
-- negative terms
-- scoring
-- locally relevant watch terms
+- one short OR list for supply-chain and vulnerability signals
+- `SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY`
+- CISA KEV force-notification policy
 
-Do not create a `profiles/` hierarchy until a second real profile exists.
+### `ai_security.yaml`
+
+Defines:
+
+- one short AI-context OR group
+- one short security-context OR group
+- AND between those two groups
+- `SLACK_WEBHOOK_URL_AI_SECURITY`
+
+The configuration stays flat because both profiles share the same curated sources; a nested profile framework is unnecessary.
 
 ## Source compatibility
 
@@ -157,7 +177,7 @@ HTML scraping
 
 Most normal blogs should require only a `sources.yaml` change.
 
-Special structured sources such as CISA KEV may use a small adapter.
+Special structured sources such as CISA KEV may use a small adapter. Flatt uses a source-specific adapter for its blog index because its RSS descriptions contain full articles and package lists that reduce filtering precision; the adapter reads only index-card metadata and does not crawl article pages.
 
 ## Deduplication
 
@@ -167,17 +187,19 @@ Notification state is stored on a dedicated Git branch:
 
 ```text
 state
-└── state/notified.json
+├── state/supply_chain_vulnerability.json
+└── state/ai_security.json
 ```
 
 The `main` branch remains focused on code and configuration.
 
 ## Secrets
 
-Create the repository secret:
+Create separate repository secrets as needed:
 
 ```text
-SLACK_WEBHOOK_URL
+SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY
+SLACK_WEBHOOK_URL_AI_SECURITY
 ```
 
 Never commit the webhook URL.
@@ -201,20 +223,13 @@ Before enabling another source, answer:
 
 Do not add feeds simply because they publish security content.
 
-## Future profiles
+## Current profiles
 
-A future second profile might eventually justify a structure like:
+The two real profiles are:
 
 ```text
-config/
-├── security/
-│   ├── sources.yaml
-│   └── filters.yaml
-└── ai-news/
-    ├── sources.yaml
-    └── filters.yaml
+supply-chain-vulnerability → supply-chain and vulnerability information
+ai-security                → AI / LLM / Agent / MCP / Skills security
 ```
 
-Do not build this structure yet.
-
-Extensibility should emerge from real use cases, not speculative abstraction.
+They share fetchers and source definitions but keep filters, webhooks, and state independent.

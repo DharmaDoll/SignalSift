@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書種別 | MVP機能・非機能仕様書 |
-| 対象 | SignalSift Core + Security Profile + Slack通知 |
+| 対象 | SignalSift Core + 2つのセキュリティProfile + Slack通知 |
 | 文書バージョン | 1.0 |
 | 基準日 | 2026-08-10 |
 | 実装状態 | 仕様策定済み・アプリケーション本体は未実装 |
@@ -18,11 +18,11 @@
 
 SignalSiftは、厳選した公開情報源から記事を取得し、決定論的なルールで有用性を判定し、未通知の重要な記事だけをSlackへ送る、run-once型の情報選別アプリケーションである。
 
-最初のユースケースであるSecurity Profileは、次の3領域を対象とする。
+2つのProfileは、次の3領域を分離して対象とする。
 
-1. ソフトウェア・サプライチェーン攻撃
-2. 重要または実際に悪用されている脆弱性
-3. LLM、AIエージェント、MCPに関するセキュリティ脅威
+1. Supply Chain Vulnerability: ソフトウェア・サプライチェーン攻撃
+2. Supply Chain Vulnerability: 脆弱性情報
+3. AI Security: LLM、AIエージェント、MCP、Skillsに関するセキュリティ脅威
 
 価値基準は収集件数ではなく、次の4点である。
 
@@ -42,6 +42,7 @@ SignalSiftは、厳選した公開情報源から記事を取得し、決定論�
 - YAMLによる情報源およびフィルターポリシー設定
 - RSS 2.0、Atom、RSS 1.0/RDFの汎用取得と正規化
 - CISA KEV用の小さなJSONアダプター
+- Flattブログトップページ用の小さなHTMLアダプター
 - 情報源固有の事前フィルター
 - 決定論的な複合ルールと整数スコアリング
 - 記事単位の重複排除
@@ -77,10 +78,10 @@ SignalSiftは、厳選した公開情報源から記事を取得し、決定論�
 2. CLIが有効な情報源を取得する。
 3. 各記事を共通モデルへ正規化する。
 4. 明白な媒体固有ノイズを除外する。
-5. Security Profileのルールでスコアと選定理由を計算する。
-6. 通知済み記事を除外する。
-7. 未通知の採用記事をSlackへ送信する。
-8. Slackが成功を返した記事だけを通知済みとして保存する。
+5. 選択したProfileのルールでスコアと選定理由を計算する。
+6. Profileごとの通知済み記事を除外する。
+7. 未通知の採用記事をProfile専用Slackへ送信する。
+8. Slackが成功を返した記事だけをProfile専用stateへ保存する。
 
 運用者は同じ処理を `workflow_dispatch` から手動実行できる。
 
@@ -93,8 +94,9 @@ GitHub Actions
 signalsift run
       │
       ├── config/sources.yaml
-      ├── config/filters.yaml
-      └── state branch: state/notified.json
+      ├── config/supply_chain_vulnerability.yaml
+      ├── config/ai_security.yaml
+      └── state branch: state/{supply_chain_vulnerability,ai_security}.json
       │
       ▼
 Fetch → Normalize → Source pre-filter → Score → Dedupe → Slack
@@ -106,7 +108,8 @@ Fetch → Normalize → Source pre-filter → Score → Dedupe → Slack
 論理的には次の2層で構成する。
 
 - **SignalSift Core**: 取得、正規化、ルール評価、スコア、記事キー、状態、通知境界
-- **Security Profile**: 情報源、セキュリティ用キーワード、CISA KEVアダプター、Slack向け表示分類
+- **Supply Chain Vulnerability Profile**: supply-chainと脆弱性用の短いORキーワード、CISA KEV強制採用、専用Webhook/state
+- **AI Security Profile**: AI/LLM/Agent/MCP/Skills文脈とsecurity文脈の2群、専用Webhook/state
 
 Coreの共通モデルにCVE専用必須フィールドなどのセキュリティ固有前提を持ち込まない。
 
@@ -126,7 +129,7 @@ Coreの共通モデルにCVE専用必須フィールドなどのセキュリテ�
 MVPが公開するコマンドは次の1つとする。
 
 ```bash
-signalsift run [--dry-run] [--state-path PATH]
+signalsift run [--profile supply-chain-vulnerability|ai-security] [--dry-run] [--state-path PATH] [--review-lookback-hours HOURS]
 ```
 
 コマンドは1回の処理サイクルを実行して終了する。待機、ループ、スケジューリングは行わない。
@@ -135,20 +138,24 @@ signalsift run [--dry-run] [--state-path PATH]
 
 ```text
 config/sources.yaml
-config/filters.yaml
+config/supply_chain_vulnerability.yaml
+config/ai_security.yaml
 ```
 
 状態ファイルの論理パスは以下とする。
 
 ```text
-state/notified.json
+state/supply_chain_vulnerability.json
+state/ai_security.json
 ```
 
 GitHub Actionsは `state` ブランチの内容を上記パスへ準備してからCLIを起動し、CLI終了後に変更がある場合だけ同ブランチへコミット・pushする。Git操作そのものをCoreのドメイン処理へ混在させない。
 
-`--state-path` は状態ファイルのパスを上書きする。GitHub Actionsでは既定値を使い、ローカルでは `.local/state/notified.json` を推奨する。
+`--profile` の既定値は `supply-chain-vulnerability` とする。`--state-path` は選択Profileの状態ファイルを上書きする。ローカルでは `.local/state/supply_chain_vulnerability.json` と `.local/state/ai_security.json` のように分離する。
 
 `--dry-run` は取得、正規化、フィルター、score、重複判定、通知本文生成までを実行するが、Slackへ送信せず、状態ファイルも作成・変更しない。Webhook URLは不要とし、採用候補のtitle、source、score、`why_matched`、通知予定形式を安全なプレーンテキストで標準出力へ表示する。取得・解析等の障害に対する終了コードは通常実行と同じとする。
+
+`--review-lookback-hours HOURS` は正の整数とし、`--dry-run` とだけ併用できる精度調整用オプションとする。指定時は保存済みの `initial_cutoff_at` と通知履歴を一時的に無視し、実行時刻から指定時間を遡った記事を再評価する。本番設定の24時間、状態ファイル、Slackには影響を与えない。通常の `--dry-run` は保存済みcutoffと通知履歴を尊重する。
 
 ### 6.2 ローカル開発・デバッグ
 
@@ -157,7 +164,8 @@ GitHub Actionsを本番実行環境としつつ、開発者PCから同じCLIを�
 ```bash
 uv sync --locked
 uv run --locked pytest
-uv run --locked signalsift run --dry-run --state-path .local/state/notified.json
+uv run --locked signalsift run --profile supply-chain-vulnerability --dry-run --state-path .local/state/supply_chain_vulnerability.json
+uv run --locked signalsift run --profile ai-security --dry-run --state-path .local/state/ai_security.json
 ```
 
 - `uv sync --locked` がリポジトリ直下の `.venv` を作成・同期する。
@@ -172,7 +180,8 @@ uv run --locked signalsift run --dry-run --state-path .local/state/notified.json
 
 | 変数 | 必須 | 用途 | 取扱い |
 |---|---:|---|---|
-| `SLACK_WEBHOOK_URL` | 通常実行では必須 | Slack Incoming Webhook送信先 | Actions Secretsまたはローカル環境から注入し、ログへ出力しない。dry-runでは不要 |
+| `SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY` | Supply Chain Vulnerability通常実行では必須 | Supply-chain・脆弱性用Slack Incoming Webhook | Actions Secretsまたはローカル環境から注入し、ログへ出力しない。dry-runでは不要 |
+| `SLACK_WEBHOOK_URL_AI_SECURITY` | AI Security通常実行では必須 | AI Security用Slack Incoming Webhook | 同上。別チャンネルへ分離でき、同じWebhookを設定することもできる |
 
 MVPではLLM用APIキーや外部DB接続情報を要求しない。
 
@@ -206,11 +215,12 @@ MVPではLLM用APIキーや外部DB接続情報を要求しない。
 | `id` | string | はい | リポジトリ内で一意。小文字英数字と `_` を推奨 |
 | `name` | string | はい | ログとSlackに表示する名称 |
 | `enabled` | boolean | はい | `false` の情報源は取得も検証対象処理も行わない |
-| `type` | enum | はい | `rss` または `json` |
+| `type` | enum | はい | `rss`、`json` または `html` |
 | `url` | string | はい | HTTPSの取得先URL |
-| `adapter` | string | 条件付き | `json` かつ固有アダプター利用時に指定 |
+| `adapter` | string | 条件付き | 有効な`json`または`html`情報源では登録済みアダプターを指定 |
 | `priority` | integer | はい | 1～3。スコアへ変換する |
-| `force_notify_new_entries` | boolean | いいえ | 新規構造化項目を閾値に関係なく採用する。既定 `false` |
+| `match_content` | boolean | いいえ | 既定 `true`。`false` なら採否テキストからFeed全文 `content` だけを除く |
+| `match_summary_chars` | integer | いいえ | 指定時は、採否判定に使う`summary`を先頭の指定文字数へ制限する。正規化データ自体は切り詰めない |
 | `source_filter` | object | いいえ | 媒体固有の明白なノイズを除く |
 | `notes` | string | いいえ | 人間向けメモ。処理結果に影響しない |
 
@@ -223,33 +233,43 @@ MVPではLLM用APIキーや外部DB接続情報を要求しない。
 
 両方を指定した場合は `exclude` を先に評価し、除外一致は常に優先する。
 
-MVPの有効な情報源は以下の7件である。
+`source_filter` は両Profileに共通して明白な媒体固有ノイズだけを扱う。現行設定ではFlattの社員インタビュー・採用情報・サービス紹介、Wizのwebinar・customer story、StepSecurityのwebinar・customer story・mid-year update、Aikidoのcustomer story・webinar・company update・funding・製品比較カテゴリを除外する。Supply-chain、脆弱性、AI等の主題語はここへ重複させず、各Profile設定で評価する。
+
+MVPの有効な情報源は以下の8件である。
 
 | ID | 種別 | 優先度 | 役割 |
 |---|---|---:|---|
 | `jpcert` | RSS/RDF | 3 | 国内向け運用情報、注意喚起 |
 | `cisa_kev` | JSON + `cisa_kev` | 3 | 悪用確認済み脆弱性 |
-| `flatt` | RSS | 3 | 国内AppSec、サプライチェーン分析 |
+| `flatt` | HTML + `flatt_blog` | 3 | 国内AppSec、サプライチェーン分析 |
 | `wiz` | RSS | 3 | クラウド、脆弱性、AI/MCP研究 |
 | `stepsecurity` | RSS | 3 | GitHub Actions、パッケージ侵害 |
 | `aikido` | RSS | 2 | OSSマルウェア、パッケージ侵害 |
 | `google_threat_intel` | RSS | 3 | 大規模攻撃、悪用、脅威研究 |
+| `github_security_blog` | RSS | 3 | GitHub公式のsupply-chain、脆弱性、Security Lab情報 |
+
+GitHub Security BlogはRSSの短いsummaryとは別に長い記事全文を `content` へ含む。本文中の付随語による誤分類を避けるため `match_content: false` とし、title、summary、categories、external IDsだけを評価する。正規化済み `content` 自体は破棄しない。
+
+Google Threat IntelligenceはRSSの`summary`自体に記事全文を含む。`match_content: false`に加えて`match_summary_chars: 500`を指定し、title、summary冒頭500文字、categories、external IDsだけを評価する。正規化済み`summary`は通知用に保持する。
 
 コメントアウトされた候補は設定値ではなく、MVPで取得・実装・試験しない。
 
-MVPでは、アダプターなしの汎用JSONスキーマは定義しない。`type: json` の有効情報源には登録済みアダプターを必須とし、未知のアダプター名は設定エラーとする。
+MVPでは、アダプターなしの汎用JSONまたはHTMLスキーマは定義しない。`type: json` または `type: html` の有効情報源には登録済みアダプターを必須とし、未知のアダプター名は設定エラーとする。
 
-### 7.3 `config/filters.yaml`
+### 7.3 Profile設定
+
+`config/supply_chain_vulnerability.yaml` と `config/ai_security.yaml` は同じ小さなschemaを用いる。設定、Webhook環境変数、stateを分離し、一方の通知履歴や配信障害がもう一方の履歴へ混入しない。
 
 トップレベル項目は以下とする。
 
 | 項目 | 意味 |
 |---|---|
+| `profile` | Profile ID、Webhook環境変数名、強制採用source ID |
 | `notification` | 通知閾値、初回期間、状態保持期間、個別通知上限 |
 | `negative_terms` | 通常・軽度の減点値と、明白なノイズ記事を減点する語 |
 | `rules` | 主題を成立させる基本ルール |
-| `boosts` | 緊急性、深刻度、実用性による加点 |
-| `watch_terms` | 組織内で関心が高い技術語による加点 |
+| `boosts` | 任意。必要性が確認された場合だけ使う追加点 |
+| `watch_terms` | 任意。必要性が確認された場合だけ使う追加点 |
 | `source_priority_score` | 情報源優先度から得点への写像 |
 
 `notification` の現在値は以下とする。
@@ -330,7 +350,7 @@ MVPでは、アダプターなしの汎用JSONスキーマは定義しない。`
 
 | 共通フィールド | Feed候補 |
 |---|---|
-| `id` | `guid`、Atom `id` |
+| `id` | `guid`、Atom `id`、RSS 1.0/RDFの`rdf:about` |
 | `title` | `title` |
 | `url` | alternate link、`link` |
 | `published_at` | `published`、`updated`、`pubDate`、`dc:date` の順で利用可能な値 |
@@ -355,6 +375,7 @@ Adapterレジストリーは小さな静的辞書とする。
 ```python
 ADAPTERS = {
     "cisa_kev": fetch_cisa_kev,
+    "flatt_blog": fetch_flatt_blog,
 }
 ```
 
@@ -372,7 +393,7 @@ CISA KEVの各 `vulnerabilities[]` 要素を1件の `NormalizedItem` に変換�
 
 原記事URLがKEV項目にない場合は、CISAの該当カタログまたはCVE詳細へ到達可能な安定したHTTPS URLを生成する。
 
-`force_notify_new_entries: true` の情報源では、保存済みの初回基準日時以降に追加され、かつ状態に存在しない項目を閾値に関係なく採用する。ただし次はバイパスしない。
+Supply Chain Vulnerability Profileの `force_notify_source_ids` に含まれるCISA KEVは、保存済みの初回基準日時以降に追加され、かつ同Profileのstateに存在しない項目を閾値に関係なく採用する。AI Security Profileにはこの指定を置かない。次はバイパスしない。
 
 - 保存済みの初回基準日時
 - 記事重複判定
@@ -380,7 +401,21 @@ CISA KEVの各 `vulnerabilities[]` 要素を1件の `NormalizedItem` に変換�
 
 強制採用時は `why_matched` に `force-notify:cisa_kev` を含める。
 
-### 9.4 取得障害の分離
+### 9.4 Flattブログトップページアダプター
+
+FlattのRSS `description` は記事全文や長いパッケージ一覧を含み、記事の主題と無関係なwatch term・negative termまで一致させることが実データレビューで確認された。この情報源に限り、公式ブログトップページ1ページを取得し、各記事カードの次の値だけを正規化する。
+
+| HTML上の値 | 正規化先 |
+|---|---|
+| `section.archive-entry[data-uuid]` | 安定した `id` |
+| `a.entry-title-link` | `title` と同一originの `url` |
+| header内の `time[datetime]` | `published_at`。日付の00:00:00 UTC |
+| `p.entry-description` | 短い `summary` |
+| 記事カード内のcategory link | `categories[]` |
+
+記事ページは巡回せず、トップページ外のナビゲーション、サイドバー、関連記事、パッケージ一覧を評価テキストへ含めない。記事カードが1件も解析できない場合はHTML構造変更として情報源失敗にする。記事URLはトップページと同じhostのHTTPSだけを許可する。
+
+### 9.5 取得障害の分離
 
 1つの情報源でHTTP、サイズ、解析、スキーマのエラーが起きても他の情報源を処理する。失敗した情報源から部分的で信頼できないデータを通知しない。全情報源の処理終了後、失敗が1件以上あれば終了コード1とする。
 
@@ -391,6 +426,8 @@ CISA KEVの各 `vulnerabilities[]` 要素を1件の `NormalizedItem` に変換�
 ```text
 title + summary + content + categories + external_ids
 ```
+
+情報源に`match_content: false`が指定された場合は`content`を連結しない。`match_summary_chars`が指定された場合は照合用コピーの`summary`だけを先頭の指定文字数へ制限する。どちらも`NormalizedItem`に保持する原データは変更しない。
 
 照合時は次を行う。
 
@@ -424,7 +461,7 @@ title + summary + content + categories + external_ids
 
 ### 11.2 負の語による減点
 
-`negative_terms` は、正の主題シグナルを持つ記事を一律に破棄せず、マーケティング等の明白なノイズを閾値未満へ下げるために用いる。減点値と語はSecurity Profile設定から読み込む。
+`negative_terms` は、正の主題シグナルを持つ記事を一律に破棄せず、マーケティング等の明白なノイズを閾値未満へ下げるために用いる。減点値と語は選択Profile設定から読み込む。
 
 - `negative_terms.mild.terms` だけに一致した場合は、記事ごとに `negative_terms.mild.score`（現在 −3点）を適用する。
 - `negative_terms.terms` に1つ以上一致した場合は、記事ごとに `negative_terms.score`（現在 −5点）を適用する。
@@ -442,26 +479,54 @@ title + summary + content + categories + external_ids
 - `all_groups`: 各グループ内で1語以上一致し、すべてのグループが成立すればルール成立。
 - 1ルールが成立するたび、そのルールの `score` を1回加算する。
 - 複数の主題ルールが成立した場合はそれぞれ加算する。
+- `source_ids`を持つルールは指定sourceだけへ適用する。
+- `exclude_source_ids`を持つルールは指定sourceへ適用しない。`source_ids`と同じsourceを両方に指定することは設定エラーとする。
 
-Security Profileでは以下を定義する。
+2つのProfileでは以下を定義する。
 
-| ルール | 条件 | 得点 |
+| Profile / ルール | 条件 | 得点 |
 |---|---|---:|
-| `supply_chain` | 強いサプライチェーン侵害語のいずれか | +3 |
-| `vulnerability` | 脆弱性文脈 AND 悪用・重大影響文脈 | +3 |
-| `ai_security` | AI文脈 AND セキュリティ文脈 | +3 |
+| Supply Chain Vulnerability / `supply_chain_vulnerability` | supply-chainまたは脆弱性の短い語のOR | +5 |
+| AI Security / `ai_security` | AI文脈の短い語OR AND security文脈の短い語OR | +5 |
 
-単なるCVE言及は `vulnerability` を成立させない。単なるAI製品発表は `ai_security` を成立させない。
+Supply Chain Vulnerability Profileは厳選sourceの文脈を信頼し、通知漏れを抑える。`npm worm`ではなく`npm`、`malicious PyPI package`ではなく`PyPI`、通常CVEも`CVE`または`CVEs`だけで成立させる。現行OR語は次とする。
 
-`supply_chain` には、`npm worm`、`poisoned package(s)`、`package poisoning` のように、package ecosystemと侵害の両方を一つの複合表現で示す語を含める。単独の `npm`、`package`、`worm` は誤検知を避けるため主題成立語にせず、watch termまたは他の強い文脈と組み合わせて扱う。
+```text
+CVE | CVEs | vulnerability | vulnerabilities | 脆弱性 | zero-day | 0-day | RCE | bypass |
+supply chain | compromise | malicious | typosquatting | dependency |
+npm | yarn | pnpm | PyPI | pip | conda | Poetry | package | crates.io |
+Maven | Maven Central | Gradle | NuGet | RubyGems | Bundler | Composer |
+Packagist | Go modules | Cargo | Hex | pub.dev | CPAN | CocoaPods |
+SwiftPM | Swift Package Manager | LuaRocks | Hackage | Cabal | opam |
+Conan | vcpkg | GitHub Actions |
+サプライチェーン | パッケージ | 悪用 | ゼロデイ | 認証回避 |
+認証不要 | リモートコード実行 | バイパス
+```
+
+JPCERT/CCはWeekly Reportの各アンカーを個別記事へ分解するが、一般的な`CVE`・`vulnerability`語だけでは通知しない。`supply_chain_vulnerability`ルールを`exclude_source_ids: [jpcert]`で除外し、`supply_chain_vulnerability_jpcert`を`source_ids: [jpcert]`で適用する。このJPCERT専用ruleは、RCE、悪用、認証回避、パッケージ侵害など強いシグナルだけを含む。
+
+AI Security Profileは一般AI記事を避けるため、2群のANDだけを残す。各群内は単純ORとする。
+
+```text
+AI文脈:
+LLM | AI agent | AI agents | agentic | MCP | Model Context Protocol |
+Skills | Claude Code | Codex | RAG | AI vulnerability | AI vulnerabilities |
+AI security | AI exploit | AI exploits | AI model | AI models |
+AI脆弱性 | AIセキュリティ | AIシステム | AIエージェント | 生成AI
+
+security文脈:
+CVE | CVEs | vulnerability | vulnerabilities | attack | exploit | injection |
+poisoning | theft | bypass | RCE | unauthenticated | command execution |
+malicious | 脆弱性 | 攻撃 | 窃取
+```
+
+現行Profileではboostとwatch termを設定しない。語彙を別名の追加辞書へ重複させず、採否を短い主題語とsource priorityだけで説明する。
 
 通常記事の合計得点は次の式で求める。
 
 ```text
 score = source priority
       + 成立した主題ルール
-      + 成立したboost
-      + watch term（一致時1回）
       + negative term penalty（一致時1回）
 ```
 
@@ -477,23 +542,7 @@ score = source priority
 
 情報源優先度だけで通知閾値へ到達してはならない。
 
-### 11.5 ブースト
-
-成立したブーストごとに1回加算する。
-
-| ブースト | 代表的条件 | 得点 |
-|---|---|---:|
-| `active_exploitation` | in-the-wild、known exploited、KEV等 | +4 |
-| `severe_impact` | pre-auth RCE、認証回避、0-day等 | +3 |
-| `actionable` | affected versions、mitigation、IOC等 | +2 |
-
-ブーストは主題ルールの代替ではない。強制採用対象を除き、主題ルールが1つも成立しない記事は、ブーストと情報源優先度だけで閾値以上になっても通知しない。
-
-### 11.6 Watch term
-
-`watch_terms.terms` の1語以上に一致した場合、`watch_terms.score` を1回だけ加算する。複数語一致しても語数分は加算しない。一致した具体語は `why_matched` に含める。
-
-### 11.7 採用条件
+### 11.5 採用条件
 
 通常記事は、以下をすべて満たした場合に採用する。
 
@@ -503,19 +552,17 @@ AND score >= notification.threshold
 AND 情報源固有フィルターで除外されていない
 ```
 
-`force_notify_new_entries` の対象記事は、主題ルールと閾値だけを置き換える。最低要件、保存済みの初回基準日時、重複排除は通常どおり適用する。
+Profileの `force_notify_source_ids` 対象記事は、主題ルールと閾値だけを置き換える。Supply Chain Vulnerability ProfileのCISA KEVだけが対象で、AI Security Profileでは強制採用しない。cutoffと重複排除は通常どおり適用する。
 
-### 11.8 `why_matched`
+### 11.6 `why_matched`
 
 採用記事には、人間が得点を再現できる理由を付与する。順序は以下とする。
 
 1. 成立した主題ルール
 2. ルール内で一致した代表語
-3. 成立したブースト
-4. 負の語と減点
-5. 一致したwatch term
-6. `source-priority:<n>`
-7. 強制採用理由
+3. 負の語と減点
+4. `source-priority:<n>`
+5. 強制採用理由
 
 同一理由は重複させない。例:
 
@@ -529,7 +576,7 @@ source-priority:3
 
 ## 12. 初回実行と記事日時
 
-`state/notified.json` が存在しない実行を初回実行とする。初回実行開始時に次を計算し、状態の `initial_cutoff_at` へ保存する。
+選択Profileのstateファイルが存在しない実行を、そのProfileの初回実行とする。初回実行開始時に次を計算し、状態の `initial_cutoff_at` へ保存する。
 
 ```text
 initial_cutoff_at = 初回実行開始時刻 - initial_lookback_hours
@@ -538,8 +585,8 @@ initial_cutoff_at = 初回実行開始時刻 - initial_lookback_hours
 初回とそれ以降の全実行で、`initial_cutoff_at` 以降に公開された記事だけを候補にする。境界時刻と同じ記事は含める。これにより初回に除外した過去記事が2回目の実行で通知されることを防ぎ、初回以降に公開された記事は一時的な実行停止が24時間を超えても候補にできる。
 
 - RSS等は `published_at` を使用する。
-- CISA KEVは `dateAdded` を使用する。
-- CISA KEVの `dateAdded` は日付精度しかないため、eligibility判定では `dateAdded >= initial_cutoff_at` のUTC日付部分として比較する。正規化・表示用の `published_at` は同日00:00:00 UTCを用いる。
+- CISA KEVは `dateAdded`、Flattトップページはカード内の日付を使用する。
+- CISA KEVとFlattトップページは日付精度しかないため、eligibility判定では `published_at.date() >= initial_cutoff_at.date()` としてUTC日付単位で比較する。正規化・表示用の `published_at` は同日00:00:00 UTCを用いる。
 - `published_at` が不明な記事は、過去記事か新着記事かを安全に判定できないため除外し、ログに `published_at=unknown` を記録する。
 - 未来日時が現在より24時間を超えている記事は不正データとしてスキップする。
 
@@ -567,6 +614,8 @@ title:<source_id>:<normalized_title>
 
 feed IDが恒久IDではなく毎回変わると明らかな場合は使用せずURLへフォールバックする。
 
+RSS 1.0/RDFの`rdf:about`はentry IDとして扱う。同一文書内の別項目を表すアンカー付き`rdf:about`は、JPCERT/CC Weekly Reportのように各項目を区別するためID内のfragmentを保持する。通常のcanonical URL正規化では従来どおりfragmentを除く。
+
 ### 13.3 URL正規化
 
 - schemeとhostを小文字化する。
@@ -588,7 +637,7 @@ feed IDが恒久IDではなく毎回変わると明らかな場合は使用せ�
 
 ### 14.1 保存場所と形式
 
-永続状態は専用Gitブランチ `state` の `state/notified.json` だけに保存する。
+永続状態は専用Gitブランチ `state` の `state/supply_chain_vulnerability.json` と `state/ai_security.json` に分けて保存する。同一記事が両Profileに該当した場合、それぞれの通知先と履歴で独立して扱う。
 
 ```json
 {
@@ -632,7 +681,7 @@ pruneだけで状態が変わった場合も永続化対象とする。
 
 ### 14.5 Git永続化
 
-- `state` ブランチには `state/notified.json` だけを置く。
+- `state` ブランチには2つのProfile stateだけを置く。
 - ファイル内容に実質的な変更がある場合だけcommit・pushする。
 - `main` ブランチへ実行時状態をcommitしない。
 - GitHub Actionsの単一concurrency group `signalsift-state` で同時更新を防ぐ。
@@ -643,7 +692,7 @@ pruneだけで状態が変わった場合も永続化対象とする。
 
 ### 15.1 送信方式
 
-GitHub Actions Secret `SLACK_WEBHOOK_URL` のIncoming WebhookへHTTPS POSTする。成功はHTTP 2xxとする。Webhookレスポンスが非2xxまたはタイムアウトなら失敗とする。
+選択Profileの `webhook_env` が示すIncoming WebhookへHTTPS POSTする。Supply Chain Vulnerabilityは `SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY`、AI Securityは `SLACK_WEBHOOK_URL_AI_SECURITY` を使う。成功はHTTP 2xxとする。Webhookレスポンスが非2xxまたはタイムアウトなら失敗とする。
 
 通知本文に翻訳やLLM要約を必須としない。タイトルと要約は取得元の言語を維持する。
 
@@ -689,12 +738,18 @@ URL
 - Slack送信失敗が1件以上あれば、成功分の状態を保存した後に終了コード1とする。
 - Webhook URLおよびWebhook URLから導出した情報をログへ出さない。
 
+### 15.5 情報源障害の運用通知
+
+HTTP取得失敗、Feed/JSON解析失敗、Flattの記事カードが1件も解析できない等の情報源障害が1件以上あれば、通常実行では記事通知と同じWebhookへ運用通知を1件送る。1実行内の複数障害は1メッセージへまとめ、情報源名、情報源ID、例外種別、人が対応可能な短い説明だけを含める。レスポンス本文、記事本文、Webhook URLは含めない。
+
+運用通知に失敗しても他情報源の記事処理と成功済み状態保存を妨げないが、実行結果は終了コード1とする。`--dry-run` では送信せず `operational-alert-preview` として表示する。同じ障害が次の定期実行でも続く場合は、復旧を見逃さないことを優先し、実行ごとに通知する。
+
 ## 16. パイプライン詳細
 
 1回の実行は次の順序を厳守する。
 
 1. 設定を読み込み、完全に検証する。
-2. 通常実行の場合だけ `SLACK_WEBHOOK_URL` の存在を確認する。
+2. 通常実行の場合だけ選択ProfileのWebhook環境変数の存在を確認する。
 3. 通知済み状態を読み込む。
 4. 保持期限を過ぎた状態をpruneする。
 5. 有効な情報源を設定順に処理する。
@@ -704,11 +759,12 @@ URL
 9. グローバルルールとスコアを評価する。
 10. `article_key` を生成し、通知済み・実行内重複を除外する。
 11. 採用記事を安定ソートする。
-12. 通常実行では個別またはダイジェストでSlackへ送り、dry-runでは通知予定内容を標準出力へ表示する。
-13. 通常実行で成功した記事だけ状態へ追加する。
-14. 通常実行で状態変更があれば原子的にローカルファイルへ書く。
-15. 実行集計をログ出力して終了する。
-16. GitHub Actionsが状態差分を `state` ブランチへ保存する。
+12. 情報源障害があれば、通常実行では1件にまとめてSlackへ送り、dry-runでは運用通知予定内容を標準出力へ表示する。
+13. 通常実行では採用記事を個別またはダイジェストでSlackへ送り、dry-runでは通知予定内容を標準出力へ表示する。
+14. 通常実行で成功した記事だけ状態へ追加する。
+15. 通常実行で状態変更があれば原子的にローカルファイルへ書く。
+16. 実行集計をログ出力して終了する。
+17. GitHub Actionsが状態差分を `state` ブランチへ保存する。
 
 ローカル状態ファイルの更新は、同一ディレクトリの一時ファイルへ完全なJSONを書き、flush後にrenameする方式など、途中書き込みが見えない原子的な方法を用いる。
 
@@ -749,7 +805,7 @@ URL
 | Concurrency group | `signalsift-state` |
 | Cancel in progress | `false` |
 | Timeout | 10分 |
-| Secret | `SLACK_WEBHOOK_URL` |
+| Secret | `SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY`、`SLACK_WEBHOOK_URL_AI_SECURITY` |
 
 ワークフローは概ね次を行う。
 
@@ -812,7 +868,7 @@ Slack成功後かつ状態永続化前の障害では重複が起こり得る。
 | `cli.py` | 設定読込、run-onceオーケストレーション、終了コード |
 | `models.py` | 設定モデル、`NormalizedItem`、評価結果 |
 | `fetch.py` | 制限付きHTTP、汎用RSS/Atom/RDF取得 |
-| `adapters.py` | CISA KEV変換、静的Adapterレジストリー |
+| `adapters.py` | CISA KEV、Flattトップページ変換、静的Adapterレジストリー |
 | `filter.py` | source filter、複合ルール、得点、理由 |
 | `dedupe.py` | URL・タイトル正規化、`article_key` |
 | `state.py` | JSON状態読込、prune、原子的保存 |
@@ -822,7 +878,7 @@ Slack成功後かつ状態永続化前の障害では重複が起こり得る。
 
 ## 22. テスト仕様
 
-テストはネットワークを使わず、ローカルのRSS、Atom、RDF、JSON、状態、Slack応答フィクスチャを用いる。
+テストはネットワークを使わず、ローカルのRSS、Atom、RDF、HTML、JSON、状態、Slack応答フィクスチャを用いる。
 
 ### 22.1 必須受入ケース
 
@@ -831,7 +887,7 @@ Slack成功後かつ状態永続化前の障害では重複が起こり得る。
 | AC-01 | 悪性npmパッケージによるサプライチェーン事件 | 採用されSlack通知される |
 | AC-02 | supply chainを含むウェビナー・製品宣伝 | `negative_terms` の減点で閾値未満となる |
 | AC-03 | CVE + exploited in the wild | 採用される |
-| AC-04 | 重大性・悪用文脈のない通常CVE | 不採用となる |
+| AC-04 | 重大性・悪用文脈のない通常CVE | Supply Chain Vulnerability Profileで採用される |
 | AC-05 | MCPまたはAI agent + vulnerability/attack | 採用される |
 | AC-06 | セキュリティ文脈のないAI製品発表 | 不採用となる |
 | AC-07 | 同じ記事を2回処理 | Slack成功後、2回目は通知されない |
@@ -848,19 +904,25 @@ Slack成功後かつ状態永続化前の障害では重複が起こり得る。
 | AC-18 | 180日より古い状態 | pruneされ、状態差分が保存される |
 | AC-19 | 初回に除外した古いFeed記事を2回目にも取得 | 保存した基準日時により引き続き通知されない |
 | AC-20 | `--dry-run` で採用記事がある | Webhookなしで候補を表示し、Slack送信と状態変更を行わない |
+| AC-21 | Flattトップページの記事カード | 短い概要だけを正規化し、カード外の語をscoreへ含めない |
+| AC-22 | Flattを含む情報源の取得・構造解析失敗 | 他情報源を継続し、通常実行では1件の運用通知へまとめる |
+| AC-23 | 同じWeekly Report文書内で異なるfragmentを持つRDF項目 | 異なる`article_key`になり、項目が欠落しない |
+| AC-24 | GTI本文後半だけに主題語がある | summary冒頭500文字の評価では不採用となる |
+| AC-25 | bare `agent`または調査手段としてのbare `AI` + CVE | AI Security Profileでは不採用となる |
 
 ### 22.2 単体試験の重点
 
 - 各複合ルールのAND/OR境界
 - 大文字小文字、Unicode、和英キーワード
 - ルール得点が出現回数で重複加算されないこと
-- watch termが複数一致しても1回加算であること
+- Supply Chain Vulnerability Profileの短いORとAI Security Profileの2群AND
 - source filterでexcludeがincludeより優先されること
 - 記事キーの3段階フォールバック
 - URL追跡パラメーター除去
 - Slackエスケープと文字数制限
 - 状態保持期間の境界値
 - CISA KEVフィールドの正規化
+- Flatt記事カードの正規化とカード外HTMLの除外
 - HTTP timeout、サイズ、redirect、非2xx
 - dry-runとcustom state pathの非破壊性
 
@@ -878,6 +940,7 @@ MVPは以下をすべて満たしたとき完成とする。
 - 有効な7情報源を仕様どおり処理できる。
 - 通常Feedが情報源固有クラスなしで正規化される。
 - CISA KEVが専用アダプターで正規化される。
+- Flattがトップページ専用アダプターで短い記事メタデータへ正規化される。
 - フィルターと得点が設定駆動かつ説明可能である。
 - 普通のCVEと一般的なAIニュースを通知しない。
 - 採用記事だけをSlackへ通知する。
@@ -901,7 +964,7 @@ MVPは以下をすべて満たしたとき完成とする。
 - 中優先度の日次ダイジェスト
 - 選定済み記事への日本語LLM要約
 - Slack threadによる更新
-- 2つ目の実プロファイルと、それに伴う設定ディレクトリ再編
+- 追加の実Profileと、それに伴う最小限の設定再編
 
 LLMを追加する場合もfeature flagで無効化可能とし、決定論的な選定処理をフォールバックとして維持する。秘密情報や内部資産情報をLLMへ送らない。
 
@@ -911,7 +974,7 @@ LLMを追加する場合もfeature flagで無効化可能とし、決定論的�
 
 - `negative_terms` は記事ごとに重複させず、マーケティング系を−5、一般製品発表系を−3とする。
 - 主題ルール未成立の記事は、加点だけで通知しない。
-- watch termの加点は記事ごとに1回とする。
+- 現行2Profileではboostとwatch termを使わず、短い主題語とsource priorityを使う。
 - 初回実行で日時不明の記事は除外する。
 - 初回基準日時を状態へ保存し、2回目以降の過去記事バックフィルも防ぐ。
 - 部分障害後も成功分を保存し、最終終了コードは1とする。
@@ -924,6 +987,7 @@ LLMを追加する場合もfeature flagで無効化可能とし、決定論的�
 
 - `AGENTS.md`: プロジェクト原則と実装制約
 - `README.md`: プロダクト概要と運用モデル
-- `config/sources.yaml`: 現行Security Profileの情報源
-- `config/filters.yaml`: 現行Security Profileの選定ポリシー
+- `config/sources.yaml`: 2Profileで共有する情報源
+- `config/supply_chain_vulnerability.yaml`: supply-chain・脆弱性Profileの選定と配信設定
+- `config/ai_security.yaml`: AI/LLM/Agent/MCP/Skills security Profileの選定と配信設定
 - `plan.md`: 仕様を実装するための進捗チェックリスト
