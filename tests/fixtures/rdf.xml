@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns="http://purl.org/rss/1.0/"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel rdf:about="https://example.test/">
+    <title>Example RDF</title>
+  </channel>
+  <item rdf:about="https://example.test/rdf-1">
+    <title>認証不要の脆弱性</title>
+    <link>https://example.test/rdf-1</link>
+    <description>リモートコード実行の悪用を確認</description>
+    <dc:date>2026-08-12T00:00:00+09:00</dc:date>
+    <dc:subject>注意喚起</dc:subject>
+  </item>
+</rdf:RDF>

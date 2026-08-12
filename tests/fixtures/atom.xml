@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Example Atom</title>
+  <entry>
+    <id>atom-1</id>
+    <title>AI agent vulnerability GHSA-ABCD-1234-EFGH</title>
+    <link rel="self" href="https://example.test/feed/atom-1" />
+    <link rel="alternate" href="https://example.test/atom-1" />
+    <published>2026-08-12T01:02:03Z</published>
+    <updated>2026-08-12T02:03:04Z</updated>
+    <summary type="html">&lt;p&gt;Prompt injection attack.&lt;/p&gt;</summary>
+    <content type="html">&lt;p&gt;Mitigation available.&lt;/p&gt;</content>
+    <category term="MCP" />
+  </entry>
+</feed>
