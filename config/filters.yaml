@@ -53,10 +53,16 @@ rules:
       - npm compromise
       - PyPI compromise
       - crates.io compromise
+      - npm worm
+      - package poisoning
+      - poisoned package
+      - poisoned packages
+      - poisoned versions
       - "サプライチェーン攻撃"
       - "悪性パッケージ"
       - "パッケージ改ざん"
       - "パッケージ乗っ取り"
+      - "パッケージ汚染"
 
   vulnerability:
     score: 3
