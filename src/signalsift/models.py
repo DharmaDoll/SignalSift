@@ -12,7 +12,7 @@ import yaml
 
 
 SOURCE_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
-BUILTIN_ADAPTERS = frozenset({"cisa_kev"})
+BUILTIN_ADAPTERS = frozenset({"cisa_kev", "flatt_blog"})
 
 
 class ConfigError(ValueError):
@@ -57,7 +57,8 @@ class SourceConfig:
     url: str
     priority: int
     adapter: str | None = None
-    force_notify_new_entries: bool = False
+    match_content: bool = True
+    match_summary_chars: int | None = None
     source_filter: SourceFilterConfig | None = None
     notes: str | None = None
 
@@ -80,6 +81,13 @@ class NotificationConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class ProfileConfig:
+    id: str
+    webhook_env: str
+    force_notify_source_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class TermScoreConfig:
     score: int
     terms: tuple[str, ...]
@@ -98,10 +106,13 @@ class NamedRule:
     score: int
     any: tuple[str, ...] = ()
     all_groups: tuple[tuple[str, ...], ...] = ()
+    source_ids: tuple[str, ...] = ()
+    exclude_source_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class FilterConfig:
+    profile: ProfileConfig
     notification: NotificationConfig
     negative_terms: NegativeTermsConfig
     rules: tuple[NamedRule, ...]
@@ -171,6 +182,7 @@ def load_sources_config(path: Path) -> SourcesConfig:
 def load_filter_config(path: Path) -> FilterConfig:
     root = _load_yaml(path)
     expected = {
+        "profile",
         "notification",
         "negative_terms",
         "rules",
@@ -179,17 +191,30 @@ def load_filter_config(path: Path) -> FilterConfig:
         "source_priority_score",
     }
     _reject_unknown(root, expected, "filter config")
-    missing = sorted(expected - root.keys())
+    required = {
+        "profile",
+        "notification",
+        "negative_terms",
+        "rules",
+        "source_priority_score",
+    }
+    missing = sorted(required - root.keys())
     if missing:
         raise ConfigError(f"filter config: missing field(s): {', '.join(missing)}")
 
+    profile = _parse_profile(root["profile"])
     notification = _parse_notification(root["notification"])
     negative_terms = _parse_negative_terms(root["negative_terms"])
     rules = _parse_named_rules(root["rules"], "rules")
-    boosts = _parse_named_rules(root["boosts"], "boosts")
-    watch_terms = _parse_term_score(root["watch_terms"], "watch_terms", positive=True)
+    boosts = _parse_named_rules(root["boosts"], "boosts") if "boosts" in root else ()
+    watch_terms = (
+        _parse_term_score(root["watch_terms"], "watch_terms", positive=True)
+        if "watch_terms" in root
+        else TermScoreConfig(score=0, terms=())
+    )
     source_priority_score = _parse_priority_scores(root["source_priority_score"])
     return FilterConfig(
+        profile=profile,
         notification=notification,
         negative_terms=negative_terms,
         rules=rules,
@@ -197,6 +222,33 @@ def load_filter_config(path: Path) -> FilterConfig:
         watch_terms=watch_terms,
         source_priority_score=source_priority_score,
     )
+
+
+def _parse_profile(value: Any) -> ProfileConfig:
+    path = "profile"
+    row = _require_mapping(value, path)
+    expected = {"id", "webhook_env", "force_notify_source_ids"}
+    _reject_unknown(row, expected, path)
+    missing = sorted(expected - row.keys())
+    if missing:
+        raise ConfigError(f"{path}: missing field(s): {', '.join(missing)}")
+    profile_id = _require_string(row["id"], f"{path}.id")
+    if not SOURCE_ID_PATTERN.fullmatch(profile_id):
+        raise ConfigError(f"{path}.id: must match {SOURCE_ID_PATTERN.pattern}")
+    webhook_env = _require_string(row["webhook_env"], f"{path}.webhook_env")
+    if not re.fullmatch(r"[A-Z][A-Z0-9_]*", webhook_env):
+        raise ConfigError(f"{path}.webhook_env: expected environment variable name")
+    source_ids = tuple(
+        _require_string(source_id, f"{path}.force_notify_source_ids[{index}]")
+        for index, source_id in enumerate(
+            _require_sequence(
+                row["force_notify_source_ids"], f"{path}.force_notify_source_ids"
+            )
+        )
+    )
+    if len(set(source_ids)) != len(source_ids):
+        raise ConfigError(f"{path}.force_notify_source_ids: duplicate source IDs")
+    return ProfileConfig(profile_id, webhook_env, source_ids)
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -224,7 +276,8 @@ def _parse_source(value: Any, index: int) -> SourceConfig:
         "url",
         "priority",
         "adapter",
-        "force_notify_new_entries",
+        "match_content",
+        "match_summary_chars",
         "source_filter",
         "notes",
     }
@@ -238,15 +291,17 @@ def _parse_source(value: Any, index: int) -> SourceConfig:
     if not SOURCE_ID_PATTERN.fullmatch(source_id):
         raise ConfigError(f"{path}.id: must match {SOURCE_ID_PATTERN.pattern}")
     source_type = _require_string(row["type"], f"{path}.type")
-    if source_type not in {"rss", "json"}:
-        raise ConfigError(f"{path}.type: must be 'rss' or 'json'")
+    if source_type not in {"rss", "json", "html"}:
+        raise ConfigError(f"{path}.type: must be 'rss', 'json', or 'html'")
     url = _require_https_url(row["url"], f"{path}.url")
     priority = _require_int(row["priority"], f"{path}.priority", minimum=1, maximum=3)
     enabled = _require_bool(row["enabled"], f"{path}.enabled")
 
     adapter = _optional_string(row.get("adapter"), f"{path}.adapter")
-    if source_type == "json" and enabled and adapter is None:
-        raise ConfigError(f"{path}.adapter: enabled JSON sources require an adapter")
+    if source_type in {"json", "html"} and enabled and adapter is None:
+        raise ConfigError(
+            f"{path}.adapter: enabled {source_type.upper()} sources require an adapter"
+        )
     if adapter is not None and adapter not in BUILTIN_ADAPTERS:
         raise ConfigError(f"{path}.adapter: unknown adapter {adapter!r}")
 
@@ -262,9 +317,17 @@ def _parse_source(value: Any, index: int) -> SourceConfig:
         url=url,
         priority=priority,
         adapter=adapter,
-        force_notify_new_entries=_require_bool(
-            row.get("force_notify_new_entries", False),
-            f"{path}.force_notify_new_entries",
+        match_content=_require_bool(
+            row.get("match_content", True), f"{path}.match_content"
+        ),
+        match_summary_chars=(
+            _require_int(
+                row["match_summary_chars"],
+                f"{path}.match_summary_chars",
+                minimum=1,
+            )
+            if "match_summary_chars" in row
+            else None
         ),
         source_filter=source_filter,
         notes=_optional_string(row.get("notes"), f"{path}.notes"),
@@ -354,7 +417,11 @@ def _parse_named_rules(value: Any, path: str) -> tuple[NamedRule, ...]:
         rule_path = f"{path}.{name}"
         _require_string(name, f"{rule_path}.name")
         row = _require_mapping(value, rule_path)
-        _reject_unknown(row, {"score", "any", "all_groups"}, rule_path)
+        _reject_unknown(
+            row,
+            {"score", "any", "all_groups", "source_ids", "exclude_source_ids"},
+            rule_path,
+        )
         if "score" not in row:
             raise ConfigError(f"{rule_path}: missing field: score")
         has_any = "any" in row
@@ -363,12 +430,32 @@ def _parse_named_rules(value: Any, path: str) -> tuple[NamedRule, ...]:
             raise ConfigError(f"{rule_path}: exactly one of 'any' or 'all_groups' is required")
         any_terms = _parse_terms(row["any"], f"{rule_path}.any") if has_any else ()
         groups = _parse_all_groups(row["all_groups"], f"{rule_path}.all_groups") if has_groups else ()
+        source_ids = (
+            _parse_terms(row["source_ids"], f"{rule_path}.source_ids")
+            if "source_ids" in row
+            else ()
+        )
+        exclude_source_ids = (
+            _parse_terms(
+                row["exclude_source_ids"], f"{rule_path}.exclude_source_ids"
+            )
+            if "exclude_source_ids" in row
+            else ()
+        )
+        overlap = sorted(set(source_ids) & set(exclude_source_ids))
+        if overlap:
+            raise ConfigError(
+                f"{rule_path}: source_ids and exclude_source_ids overlap: "
+                + ", ".join(overlap)
+            )
         rules.append(
             NamedRule(
                 name=name,
                 score=_require_int(row["score"], f"{rule_path}.score", minimum=1),
                 any=any_terms,
                 all_groups=groups,
+                source_ids=source_ids,
+                exclude_source_ids=exclude_source_ids,
             )
         )
     return tuple(rules)

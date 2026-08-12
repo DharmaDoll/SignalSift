@@ -48,7 +48,9 @@ def normalize_title(title: str) -> str:
 def article_key(item: NormalizedItem, *, stable_id: bool = True) -> str:
     if stable_id and item.id and item.id.strip():
         item_id = item.id.strip()
-        if _looks_like_http_url(item_id):
+        if item.raw_metadata.get("id_kind") == "rdf_about":
+            material = f"guid:{item.source_id}:{item_id}"
+        elif _looks_like_http_url(item_id):
             try:
                 material = f"url:{normalize_url(item.url or item_id)}"
             except ValueError:

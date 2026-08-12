@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 
 from signalsift.dedupe import article_key, deduplicate_results, normalize_title, normalize_url
@@ -70,6 +71,29 @@ def test_url_shaped_guid_is_canonicalized_instead_of_hashed_raw() -> None:
     )
 
     assert article_key(first) == article_key(second)
+
+
+def test_rdf_about_preserves_distinct_in_document_entry_fragments() -> None:
+    first = item(
+        item_id="https://www.jpcert.or.jp/wr/2026/wr260805.html#1",
+        url="https://www.jpcert.or.jp/wr/2026/wr260805.html#1",
+        title="Weekly Report: Edge vulnerability",
+        source_id="jpcert",
+    )
+    second = item(
+        item_id="https://www.jpcert.or.jp/wr/2026/wr260805.html#2",
+        url="https://www.jpcert.or.jp/wr/2026/wr260805.html#2",
+        title="Weekly Report: Rails vulnerability",
+        source_id="jpcert",
+    )
+    first = replace(
+        first, raw_metadata={"feed_format": "rdf", "id_kind": "rdf_about"}
+    )
+    second = replace(
+        second, raw_metadata={"feed_format": "rdf", "id_kind": "rdf_about"}
+    )
+
+    assert article_key(first) != article_key(second)
 
 
 def test_same_cve_in_different_articles_has_different_keys() -> None:

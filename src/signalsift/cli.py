@@ -1,10 +1,36 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Sequence
+import sys
+from collections.abc import Callable, Sequence
+from datetime import UTC, datetime, timedelta
+from io import TextIOBase
 from pathlib import Path
 
-from signalsift.models import ConfigError, load_filter_config, load_sources_config
+from signalsift.adapters import fetch_source
+from signalsift.dedupe import deduplicate_results
+from signalsift.fetch import FetchError
+from signalsift.filter import evaluate_item, passes_source_filter
+from signalsift.models import (
+    ConfigError,
+    EvaluationResult,
+    FilterConfig,
+    NormalizedItem,
+    SourceConfig,
+    SourcesConfig,
+    SourceRunStats,
+    load_filter_config,
+    load_sources_config,
+)
+from signalsift.slack import build_notification_batches, build_source_failure_alert
+from signalsift.state import NotificationState, StateError, is_eligible_item, load_state
+
+
+Fetcher = Callable[[SourceConfig], tuple[NormalizedItem, ...]]
+PROFILE_CONFIG_PATHS = {
+    "supply-chain-vulnerability": Path("config/supply_chain_vulnerability.yaml"),
+    "ai-security": Path("config/ai_security.yaml"),
+}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -12,12 +38,23 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     run_parser = subparsers.add_parser("run", help="Run one collection cycle.")
+    run_parser.add_argument(
+        "--profile",
+        choices=tuple(PROFILE_CONFIG_PATHS),
+        default="supply-chain-vulnerability",
+        help="Filtering and delivery profile.",
+    )
     run_parser.add_argument("--dry-run", action="store_true", help="Do not notify or write state.")
     run_parser.add_argument(
         "--state-path",
         type=Path,
-        default=Path("state/notified.json"),
-        help="Notification state file path.",
+        default=None,
+        help="Notification state file path (default: state/<profile>.json).",
+    )
+    run_parser.add_argument(
+        "--review-lookback-hours",
+        type=_positive_int,
+        help="Dry-run only: re-evaluate this many hours without notification history.",
     )
     return parser
 
@@ -29,10 +66,224 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command != "run":  # pragma: no cover - argparse enforces the command
         parser.error("unknown command")
 
+    if args.review_lookback_hours is not None and not args.dry_run:
+        parser.error("--review-lookback-hours requires --dry-run")
+    if not args.dry_run:
+        parser.exit(2, "signalsift run: live delivery pipeline is not implemented yet\n")
+
     try:
-        load_sources_config(Path("config/sources.yaml"))
-        load_filter_config(Path("config/filters.yaml"))
-    except ConfigError as exc:
+        sources = load_sources_config(Path("config/sources.yaml"))
+        filters = load_filter_config(PROFILE_CONFIG_PATHS[args.profile])
+        expected_profile_id = args.profile.replace("-", "_")
+        if filters.profile.id != expected_profile_id:
+            raise ConfigError(
+                f"profile ID mismatch: expected {expected_profile_id!r}, "
+                f"got {filters.profile.id!r}"
+            )
+        known_source_ids = {source.id for source in sources.sources}
+        unknown_force_sources = sorted(
+            set(filters.profile.force_notify_source_ids) - known_source_ids
+        )
+        if unknown_force_sources:
+            raise ConfigError(
+                "profile.force_notify_source_ids: unknown source ID(s): "
+                + ", ".join(unknown_force_sources)
+            )
+        state_path = args.state_path or _default_state_path(filters.profile.id)
+        return run_dry_cycle(
+            sources,
+            filters,
+            state_path=state_path,
+            review_lookback_hours=args.review_lookback_hours,
+        )
+    except (ConfigError, StateError) as exc:
         parser.exit(2, f"configuration error: {exc}\n")
 
-    parser.exit(2, "signalsift run: collection pipeline is not implemented yet\n")
+
+def run_dry_cycle(
+    sources: SourcesConfig,
+    filters: FilterConfig,
+    *,
+    state_path: Path,
+    review_lookback_hours: int | None = None,
+    now: datetime | None = None,
+    fetcher: Fetcher = fetch_source,
+    output: TextIOBase | None = None,
+) -> int:
+    """Run through notification rendering without sending or writing state."""
+
+    output = output or sys.stdout
+    current_time = (now or datetime.now(UTC)).astimezone(UTC)
+    if review_lookback_hours is not None:
+        if review_lookback_hours < 1:
+            raise ConfigError("review lookback hours must be positive")
+        state = NotificationState(
+            initial_cutoff_at=current_time - timedelta(hours=review_lookback_hours)
+        )
+        notified_keys: frozenset[str] = frozenset()
+        mode = f"review profile={filters.profile.id} lookback_hours={review_lookback_hours}"
+    else:
+        state = load_state(
+            state_path,
+            now=current_time,
+            initial_lookback_hours=filters.notification.initial_lookback_hours,
+        )
+        notified_keys = frozenset(state.items)
+        mode = f"dry-run profile={filters.profile.id}"
+
+    print(
+        f"mode={mode} now={_format_datetime(current_time)} "
+        f"cutoff={_format_datetime(state.initial_cutoff_at)}",
+        file=output,
+    )
+    all_results = []
+    review_dropped: list[tuple[NormalizedItem, SourceConfig, str]] = []
+    seen_keys = set(notified_keys)
+    stats: list[SourceRunStats] = []
+    had_source_failure = False
+    for source in sources.enabled_sources:
+        source_stats = SourceRunStats(source_id=source.id)
+        stats.append(source_stats)
+        try:
+            items = fetcher(source)
+            source_stats.fetch_status = "ok"
+            source_stats.fetched_count = len(items)
+            candidates_list: list[NormalizedItem] = []
+            for item in items:
+                passes_cutoff = is_eligible_item(
+                    item, state, now=current_time, source=source
+                )
+                if not passes_source_filter(item, source):
+                    if review_lookback_hours is not None and passes_cutoff:
+                        review_dropped.append((item, source, "source-filter"))
+                    continue
+                if passes_cutoff:
+                    candidates_list.append(item)
+            candidates = tuple(candidates_list)
+            source_stats.candidate_count = len(candidates)
+            matched_list = []
+            for item in candidates:
+                result = evaluate_item(
+                    item,
+                    source,
+                    filters,
+                    force_notify=source.id in filters.profile.force_notify_source_ids,
+                )
+                if result is None:
+                    if review_lookback_hours is not None:
+                        review_dropped.append((item, source, "global-filter"))
+                    continue
+                matched_list.append(result)
+            matched = tuple(matched_list)
+            source_stats.matched_count = len(matched)
+            unique, source_stats.duplicate_count = deduplicate_results(
+                matched, notified_keys=frozenset(seen_keys)
+            )
+            seen_keys.update(
+                result.article_key for result in unique if result.article_key is not None
+            )
+            all_results.extend(unique)
+        except FetchError as exc:
+            had_source_failure = True
+            source_stats.fetch_status = "failed"
+            source_stats.error = f"{type(exc).__name__}: {exc}"
+        _print_source_stats(source_stats, output)
+
+    results = tuple(all_results)
+    source_map = {source.id: source for source in sources.enabled_sources}
+    source_failures = tuple(stat for stat in stats if stat.fetch_status == "failed")
+    if source_failures:
+        print("\n--- operational-alert-preview ---", file=output)
+        print(build_source_failure_alert(source_failures, source_map), file=output)
+    batches = build_notification_batches(
+        results,
+        source_map,
+        max_individual_messages=filters.notification.max_individual_messages_per_run,
+    )
+    ordered_results = tuple(result for batch in batches for result in batch.results)
+    if review_lookback_hours is not None:
+        for index, result in enumerate(ordered_results, start=1):
+            _print_review_candidate(index, result, source_map[result.item.source_id], output)
+        for index, (item, source, reason) in enumerate(review_dropped, start=1):
+            _print_review_dropped(index, item, source, reason, output)
+    else:
+        for index, batch in enumerate(batches, start=1):
+            print(f"\n--- notification-preview {index}/{len(batches)} ---", file=output)
+            print(batch.text, file=output)
+    print(
+        f"summary sources={len(stats)} failures={sum(s.fetch_status == 'failed' for s in stats)} "
+        f"fetched={sum(s.fetched_count for s in stats)} "
+        f"candidates={sum(s.candidate_count for s in stats)} "
+        f"matched={sum(s.matched_count for s in stats)} "
+        f"duplicates={sum(s.duplicate_count for s in stats)} "
+        f"notifications={len(results)} batches={len(batches)} state_changed=false slack_sent=false",
+        f"review_dropped={len(review_dropped)}",
+        file=output,
+    )
+    return 1 if had_source_failure else 0
+
+
+def _print_source_stats(stats: SourceRunStats, output: TextIOBase) -> None:
+    line = (
+        f"source={stats.source_id} fetch={stats.fetch_status} fetched={stats.fetched_count} "
+        f"candidates={stats.candidate_count} matched={stats.matched_count} "
+        f"duplicates={stats.duplicate_count} notified=0"
+    )
+    if stats.error:
+        line += f" error={stats.error}"
+    print(line, file=output)
+
+
+def _print_review_candidate(
+    index: int,
+    result: EvaluationResult,
+    source: SourceConfig,
+    output: TextIOBase,
+) -> None:
+    item = result.item
+    print(f"\n--- candidate {index} ---", file=output)
+    print(
+        f"score={result.score} topic={result.matched_topic} source={source.name}",
+        file=output,
+    )
+    print(f"title={item.title}", file=output)
+    print(f"published={_format_datetime(item.published_at) if item.published_at else 'Unknown'}", file=output)
+    print(f"why={' / '.join(result.why_matched)}", file=output)
+    if item.url:
+        print(f"url={item.url}", file=output)
+
+
+def _format_datetime(value: datetime) -> str:
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _print_review_dropped(
+    index: int,
+    item: NormalizedItem,
+    source: SourceConfig,
+    reason: str,
+    output: TextIOBase,
+) -> None:
+    print(f"\n--- dropped {index} ---", file=output)
+    print(f"reason={reason} source={source.name}", file=output)
+    print(f"title={item.title}", file=output)
+    print(
+        f"published={_format_datetime(item.published_at) if item.published_at else 'Unknown'}",
+        file=output,
+    )
+    if item.url:
+        print(f"url={item.url}", file=output)
+
+
+def _positive_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a positive integer") from exc
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return parsed
+
+
+def _default_state_path(profile_id: str) -> Path:
+    return Path("state") / f"{profile_id}.json"

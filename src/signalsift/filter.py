@@ -10,14 +10,25 @@ from signalsift.models import EvaluationResult, FilterConfig, NamedRule, Normali
 ASCII_WORD_CHARACTER = r"a-z0-9"
 
 
-def item_match_text(item: NormalizedItem) -> str:
-    fields = (
+def item_match_text(
+    item: NormalizedItem,
+    *,
+    include_content: bool = True,
+    summary_char_limit: int | None = None,
+) -> str:
+    summary = (
+        item.summary[:summary_char_limit]
+        if summary_char_limit is not None
+        else item.summary
+    )
+    fields = [
         item.title,
-        item.summary,
-        item.content,
+        summary,
         *item.categories,
         *item.external_ids,
-    )
+    ]
+    if include_content:
+        fields.append(item.content)
     return normalize_match_text(" ".join(field for field in fields if field))
 
 
@@ -48,7 +59,11 @@ def passes_source_filter(item: NormalizedItem, source: SourceConfig) -> bool:
     source_filter = source.source_filter
     if source_filter is None:
         return True
-    text = item_match_text(item)
+    text = item_match_text(
+        item,
+        include_content=source.match_content,
+        summary_char_limit=source.match_summary_chars,
+    )
     if any(term_matches(text, term) for term in source_filter.exclude):
         return False
     if source_filter.include_any and not any(
@@ -69,12 +84,18 @@ def evaluate_item(
 
     if not passes_source_filter(item, source):
         return None
-    text = item_match_text(item)
+    text = item_match_text(
+        item,
+        include_content=source.match_content,
+        summary_char_limit=source.match_summary_chars,
+    )
     priority_score = dict(config.source_priority_score)[source.priority]
     score = priority_score
 
     topic_matches: list[tuple[NamedRule, tuple[str, ...]]] = []
     for rule in config.rules:
+        if not _rule_applies_to_source(rule, source.id):
+            continue
         matched_terms = _matched_rule_terms(text, rule)
         if matched_terms:
             topic_matches.append((rule, matched_terms))
@@ -82,6 +103,8 @@ def evaluate_item(
 
     boost_matches: list[tuple[NamedRule, tuple[str, ...]]] = []
     for boost in config.boosts:
+        if not _rule_applies_to_source(boost, source.id):
+            continue
         matched_terms = _matched_rule_terms(text, boost)
         if matched_terms:
             boost_matches.append((boost, matched_terms))
@@ -107,7 +130,7 @@ def evaluate_item(
     if watch_matches:
         score += config.watch_terms.score
 
-    forced = force_notify and source.force_notify_new_entries
+    forced = force_notify
     if not forced and (not topic_matches or score < config.notification.threshold):
         return None
 
@@ -146,6 +169,12 @@ def _matched_rule_terms(text: str, rule: NamedRule) -> tuple[str, ...]:
             return ()
         matches.append(match)
     return tuple(matches)
+
+
+def _rule_applies_to_source(rule: NamedRule, source_id: str) -> bool:
+    if rule.source_ids and source_id not in rule.source_ids:
+        return False
+    return source_id not in rule.exclude_source_ids
 
 
 def _first_matching_term(text: str, terms: Iterable[str]) -> str | None:

@@ -1,0 +1,78 @@
+# SignalSift — AI / LLM / Agent / MCP / Skills security profile
+
+profile:
+  id: ai_security
+  webhook_env: SLACK_WEBHOOK_URL_AI_SECURITY
+  force_notify_source_ids: []
+
+notification:
+  threshold: 7
+  initial_lookback_hours: 24
+  state_retention_days: 180
+  max_individual_messages_per_run: 5
+
+negative_terms:
+  score: -5
+  terms:
+    - webinar
+    - customer story
+    - "ウェビナー"
+    - "導入事例"
+
+  mild:
+    score: -3
+    terms:
+      - product announcement
+      - release notes
+
+rules:
+  ai_security:
+    score: 5
+    all_groups:
+      - any:
+          - LLM
+          - AI agent
+          - AI agents
+          - agentic
+          - MCP
+          - Model Context Protocol
+          - Skills
+          - Claude Code
+          - Codex
+          - RAG
+          - AI vulnerability
+          - AI vulnerabilities
+          - AI security
+          - AI exploit
+          - AI exploits
+          - AI model
+          - AI models
+          - "AI脆弱性"
+          - "AIセキュリティ"
+          - "AIシステム"
+          - "AIエージェント"
+          - "生成AI"
+
+      - any:
+          - CVE
+          - CVEs
+          - vulnerability
+          - vulnerabilities
+          - attack
+          - exploit
+          - injection
+          - poisoning
+          - theft
+          - bypass
+          - RCE
+          - unauthenticated
+          - command execution
+          - malicious
+          - "脆弱性"
+          - "攻撃"
+          - "窃取"
+
+source_priority_score:
+  1: 1
+  2: 2
+  3: 3

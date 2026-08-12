@@ -10,9 +10,12 @@ from signalsift.models import EvaluationResult, NormalizedItem, SourceConfig
 from signalsift.slack import (
     SlackError,
     build_notification_batches,
+    build_source_failure_alert,
     escape_slack_text,
     send_notification_batches,
+    send_operational_alert,
 )
+from signalsift.models import SourceRunStats
 from signalsift.state import NotificationState, mark_notified
 
 
@@ -218,3 +221,47 @@ def test_missing_article_key_is_rejected_before_delivery() -> None:
 
     with pytest.raises(SlackError, match="article_key"):
         build_notification_batches((missing_key,), SOURCES, max_individual_messages=5)
+
+
+def test_source_failures_are_compacted_and_escaped_in_one_alert() -> None:
+    alert = build_source_failure_alert(
+        (
+            SourceRunStats(
+                source_id="example",
+                fetch_status="failed",
+                error="AdapterError: no archive entries <script> @channel",
+            ),
+            SourceRunStats(
+                source_id="unknown",
+                fetch_status="failed",
+                error="FetchError: timeout",
+            ),
+        ),
+        SOURCES,
+    )
+
+    assert alert.startswith("⚠️ SignalSift source failure")
+    assert "Example &amp; Research @\u200bchannel (`example`)" in alert
+    assert "&lt;script&gt; @\u200bchannel" in alert
+    assert "unknown (`unknown`)" in alert
+    assert alert.count("SignalSift source failure") == 1
+
+
+def test_operational_alert_delivery_returns_only_safe_errors() -> None:
+    requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        assert json.loads(request.content)["text"] == "alert"
+        return httpx.Response(500, content=b"secret response body")
+
+    error = send_operational_alert(
+        "https://hooks.slack.test/services/secret",
+        "alert",
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert requests == 1
+    assert error == "unexpected HTTP status: 500"
+    assert "secret" not in error

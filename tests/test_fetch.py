@@ -131,10 +131,11 @@ def test_parse_atom_prefers_alternate_link_and_published_date() -> None:
 def test_parse_rdf_uses_url_fallback_and_dc_fields() -> None:
     (item,) = parse_feed(fixture_bytes("rdf.xml"), source_id="jpcert")
 
-    assert item.id is None
+    assert item.id == "https://example.test/rdf-1"
     assert item.url == "https://example.test/rdf-1"
     assert item.published_at == datetime(2026, 8, 11, 15, 0, tzinfo=UTC)
     assert item.categories == ("注意喚起",)
+    assert item.raw_metadata == {"feed_format": "rdf", "id_kind": "rdf_about"}
 
 
 @pytest.mark.parametrize("name", ["unsafe_entity.xml"])

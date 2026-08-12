@@ -191,8 +191,17 @@ def _normalize_entry(
     content = _plain_text(_first_child_text(entry, ("content", "encoded")))
     categories = _categories(entry)
     external_ids = _external_ids(" ".join((title, summary, content, *categories)))
+    entry_id = _clean_optional(_first_child_text(entry, ("guid", "id")))
+    id_kind = None
+    if entry_id is None and feed_format == "rdf":
+        entry_id = _rdf_about(entry)
+        if entry_id is not None:
+            id_kind = "rdf_about"
+    raw_metadata = {"feed_format": feed_format}
+    if id_kind is not None:
+        raw_metadata["id_kind"] = id_kind
     return NormalizedItem(
-        id=_clean_optional(_first_child_text(entry, ("guid", "id"))),
+        id=entry_id,
         source_id=source_id,
         title=title,
         url=_entry_url(entry),
@@ -201,8 +210,15 @@ def _normalize_entry(
         content=content,
         categories=categories,
         external_ids=external_ids,
-        raw_metadata={"feed_format": feed_format},
+        raw_metadata=raw_metadata,
     )
+
+
+def _rdf_about(entry: Element) -> str | None:
+    for key, value in entry.attrib.items():
+        if _local_name(key) == "about":
+            return _clean_optional(value)
+    return None
 
 
 def _entry_url(entry: Element) -> str | None:

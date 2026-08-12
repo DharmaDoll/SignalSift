@@ -81,7 +81,7 @@ def is_eligible_item(
     published_at = item.published_at.astimezone(UTC)
     if published_at > now + timedelta(hours=24):
         return False
-    if source is not None and source.adapter == "cisa_kev":
+    if item.raw_metadata.get("published_precision") == "date":
         return published_at.date() >= state.initial_cutoff_at.astimezone(UTC).date()
     return published_at >= state.initial_cutoff_at
 

@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from signalsift.models import EvaluationResult, SourceConfig
+from signalsift.models import EvaluationResult, SourceConfig, SourceRunStats
 
 
 SLACK_TIMEOUT_SECONDS = 10.0
@@ -19,10 +19,12 @@ MAX_SUMMARY_CHARS = 300
 MAX_WHY_CHARS = 500
 MAX_SOURCE_CHARS = 120
 MAX_URL_CHARS = 2_000
+MAX_ERROR_CHARS = 300
 MENTION_PATTERN = re.compile(
     r"@(channel|here|everyone)(?![a-z0-9_])", re.IGNORECASE
 )
 TOPIC_LABELS = {
+    "supply-chain-vulnerability": "Supply Chain / Vulnerability",
     "supply-chain": "Supply Chain",
     "vulnerability": "Vulnerability",
     "ai-security": "AI Security",
@@ -94,6 +96,64 @@ def build_notification_batches(
         sources,
         max_payload_bytes=max_payload_bytes,
     )
+
+
+def build_source_failure_alert(
+    failures: tuple[SourceRunStats, ...],
+    sources: Mapping[str, SourceConfig],
+) -> str:
+    """Build one compact operational alert for all source failures in a run."""
+
+    if not failures:
+        raise SlackError("source failure alert requires at least one failure")
+    lines = ["⚠️ SignalSift source failure", ""]
+    for failure in failures:
+        source = sources.get(failure.source_id)
+        source_name = source.name if source is not None else failure.source_id
+        error = failure.error or "unknown source error"
+        lines.append(
+            f"- {_display_component(source_name, MAX_SOURCE_CHARS)} "
+            f"(`{_display_component(failure.source_id, MAX_SOURCE_CHARS)}`): "
+            f"{_display_component(error, MAX_ERROR_CHARS)}"
+        )
+    lines.extend(("", "Other sources continued processing. This run is marked failed."))
+    text = "\n".join(lines)
+    if len(_payload_bytes(text)) > MAX_PAYLOAD_BYTES:
+        raise SlackError("source failure alert exceeds payload limit")
+    return text
+
+
+def send_operational_alert(
+    webhook_url: str,
+    text: str,
+    *,
+    transport: httpx.BaseTransport | None = None,
+    timeout_seconds: float = SLACK_TIMEOUT_SECONDS,
+) -> str | None:
+    """Send an operational alert, returning a safe error string on failure."""
+
+    _require_https_webhook(webhook_url)
+    payload = _payload_bytes(text)
+    if len(payload) > MAX_PAYLOAD_BYTES:
+        raise SlackError("operational alert exceeds payload limit")
+    try:
+        with httpx.Client(
+            timeout=httpx.Timeout(timeout_seconds),
+            transport=transport,
+            follow_redirects=False,
+            verify=True,
+        ) as client:
+            with client.stream(
+                "POST",
+                webhook_url,
+                content=payload,
+                headers={"Content-Type": "application/json; charset=utf-8"},
+            ) as response:
+                if 200 <= response.status_code < 300:
+                    return None
+                return f"unexpected HTTP status: {response.status_code}"
+    except httpx.HTTPError as exc:
+        return f"HTTP request failed: {type(exc).__name__}"
 
 
 def send_notification_batches(

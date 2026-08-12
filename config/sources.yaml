@@ -1,7 +1,7 @@
-# SignalSift — Security Profile source configuration
+# SignalSift — shared source configuration
 #
 # Policy:
-# - This file is the current Security Profile's source configuration.
+# - This file is shared by the Supply Chain Vulnerability and AI Security profiles.
 # - SignalSift core is generic; these sources are intentionally security-specific.
 # - Keep the active source set intentionally small.
 # - Prefer RSS / Atom / RDF.
@@ -26,16 +26,23 @@ sources:
     url: https://raw.githubusercontent.com/cisagov/kev-data/refs/heads/develop/known_exploited_vulnerabilities.json
     adapter: cisa_kev
     priority: 3
-    force_notify_new_entries: true
     notes: Confirmed exploitation signal.
 
   - id: flatt
     name: GMO Flatt Security
     enabled: true
-    type: rss
-    url: https://blog.flatt.tech/rss
+    type: html
+    url: https://blog.flatt.tech/
+    adapter: flatt_blog
     priority: 3
-    notes: Japanese AppSec and software supply-chain research.
+
+    source_filter:
+      exclude:
+        - "社員インタビュー"
+        - "採用情報"
+        - "サービス紹介"
+
+    notes: Top-page excerpts avoid full-article noise in the RSS description.
 
   - id: wiz
     name: Wiz
@@ -48,7 +55,6 @@ sources:
       exclude:
         - webinar
         - customer story
-        - event
 
     notes: Cloud, vulnerability, supply-chain, AI and MCP research.
 
@@ -60,14 +66,10 @@ sources:
     priority: 3
 
     source_filter:
-      include_any:
-        - threat
-        - supply chain
-        - compromised
-        - malicious
-        - GitHub Actions
-        - npm
-        - PyPI
+      exclude:
+        - webinar
+        - customer story
+        - mid-year update
 
     notes: High-value source for active software supply-chain incidents.
 
@@ -84,6 +86,9 @@ sources:
         - webinar
         - company update
         - funding
+        - alternatives
+        - DevSec Tools & Comparisons
+        - Product & Company Updates
 
     notes: OSS malware, package compromise and vulnerability research.
 
@@ -93,7 +98,18 @@ sources:
     type: rss
     url: https://feeds.feedburner.com/threatintelligence/pvexyqv7v0v
     priority: 3
-    notes: Major campaigns, exploitation and AI-enabled threat research.
+    match_content: false
+    match_summary_chars: 500
+    notes: Major campaigns, exploitation and AI-enabled threat research. Match only the title and first 500 summary characters because the feed description contains the full article.
+
+  - id: github_security_blog
+    name: GitHub Security Blog
+    enabled: true
+    type: rss
+    url: https://github.blog/security/feed/
+    priority: 3
+    match_content: false
+    notes: Official supply-chain, vulnerability, GitHub Actions, and Security Lab information. Match only title, excerpt, categories, and external IDs to avoid full-article noise.
 
 
   # ---------------------------------------------------------------------------
@@ -107,14 +123,6 @@ sources:
   #   4. tune source/global filters,
   #   5. observe Slack volume.
   # ---------------------------------------------------------------------------
-
-  # - id: github_security_blog
-  #   name: GitHub Security Blog
-  #   enabled: true
-  #   type: rss
-  #   url: https://github.blog/security/
-  #   priority: 2
-  #   notes: Official GitHub/npm/Actions security information. Verify feed endpoint before enabling.
 
   # - id: github_advisories
   #   name: GitHub Global Security Advisories

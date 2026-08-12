@@ -19,14 +19,38 @@ def write_yaml(tmp_path: Path, text: str) -> Path:
 
 def test_loads_repository_configuration() -> None:
     sources = load_sources_config(ROOT / "config/sources.yaml")
-    filters = load_filter_config(ROOT / "config/filters.yaml")
+    security = load_filter_config(ROOT / "config/supply_chain_vulnerability.yaml")
+    ai_security = load_filter_config(ROOT / "config/ai_security.yaml")
 
-    assert len(sources.enabled_sources) == 7
+    assert len(sources.enabled_sources) == 8
     assert sources.enabled_sources[1].adapter == "cisa_kev"
-    assert filters.notification.threshold == 7
-    assert filters.negative_terms.score == -5
-    assert filters.negative_terms.mild.score == -3
-    assert dict(filters.source_priority_score) == {1: 1, 2: 2, 3: 3}
+    assert sources.enabled_sources[2].adapter == "flatt_blog"
+    github = next(
+        source for source in sources.enabled_sources if source.id == "github_security_blog"
+    )
+    assert not github.match_content
+    assert github.url == "https://github.blog/security/feed/"
+    google = next(
+        source for source in sources.enabled_sources if source.id == "google_threat_intel"
+    )
+    assert not google.match_content
+    assert google.match_summary_chars == 500
+    assert security.profile.id == "supply_chain_vulnerability"
+    assert (
+        security.profile.webhook_env
+        == "SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY"
+    )
+    assert security.profile.force_notify_source_ids == ("cisa_kev",)
+    assert ai_security.profile.id == "ai_security"
+    assert ai_security.profile.webhook_env == "SLACK_WEBHOOK_URL_AI_SECURITY"
+    assert ai_security.profile.force_notify_source_ids == ()
+    assert security.notification.threshold == 7
+    assert security.negative_terms.score == -5
+    assert security.negative_terms.mild.score == -3
+    assert dict(security.source_priority_score) == {1: 1, 2: 2, 3: 3}
+    rules = {rule.name: rule for rule in security.rules}
+    assert rules["supply_chain_vulnerability"].exclude_source_ids == ("jpcert",)
+    assert rules["supply_chain_vulnerability_jpcert"].source_ids == ("jpcert",)
 
 
 @pytest.mark.parametrize(
@@ -108,18 +132,26 @@ def test_rejects_duplicate_yaml_keys(tmp_path: Path) -> None:
 
 
 def test_rejects_invalid_notification_boundary(tmp_path: Path) -> None:
-    text = (ROOT / "config/filters.yaml").read_text(encoding="utf-8")
+    text = (ROOT / "config/supply_chain_vulnerability.yaml").read_text(encoding="utf-8")
     path = write_yaml(tmp_path, text.replace("threshold: 7", "threshold: 0", 1))
 
     with pytest.raises(ConfigError, match="notification.threshold: must be >= 1"):
         load_filter_config(path)
 
 
+def test_rejects_non_positive_summary_match_limit(tmp_path: Path) -> None:
+    text = (ROOT / "config/sources.yaml").read_text(encoding="utf-8")
+    path = write_yaml(tmp_path, text.replace("match_summary_chars: 500", "match_summary_chars: 0"))
+
+    with pytest.raises(ConfigError, match="match_summary_chars: must be >= 1"):
+        load_sources_config(path)
+
+
 def test_rejects_rule_with_any_and_all_groups(tmp_path: Path) -> None:
-    text = (ROOT / "config/filters.yaml").read_text(encoding="utf-8")
+    text = (ROOT / "config/supply_chain_vulnerability.yaml").read_text(encoding="utf-8")
     text = text.replace(
-        "    any:\n      - supply chain attack",
-        "    any:\n      - supply chain attack\n    all_groups:\n      - any:\n          - compromise",
+        "    any:\n      - CVE",
+        "    any:\n      - CVE\n    all_groups:\n      - any:\n          - compromise",
         1,
     )
     path = write_yaml(tmp_path, text)

@@ -7,7 +7,13 @@ from pathlib import Path
 import httpx
 import pytest
 
-from signalsift.adapters import ADAPTERS, AdapterError, fetch_source, parse_cisa_kev
+from signalsift.adapters import (
+    ADAPTERS,
+    AdapterError,
+    fetch_source,
+    parse_cisa_kev,
+    parse_flatt_blog,
+)
 from signalsift.models import SourceConfig
 
 
@@ -23,12 +29,44 @@ def cisa_source() -> SourceConfig:
         url="https://example.test/kev.json",
         priority=3,
         adapter="cisa_kev",
-        force_notify_new_entries=True,
     )
 
 
+def flatt_source() -> SourceConfig:
+    return SourceConfig(
+        id="flatt",
+        name="GMO Flatt Security",
+        enabled=True,
+        type="html",
+        url="https://blog.flatt.tech/",
+        priority=3,
+        adapter="flatt_blog",
+    )
+
+
+FLATT_INDEX_HTML = b"""<!doctype html>
+<html><body>
+  <nav>Conference event and unrelated Codex links</nav>
+  <section class="archive-entry test-archive-entry" data-uuid="14945776032061192456">
+    <div class="archive-entry-header">
+      <time datetime="2026-08-04">2026-08-04</time>
+      <h1><a class="entry-title-link" href="/entry/keyv_compromise">keyv software supply-chain attack</a></h1>
+    </div>
+    <div class="categories"><a href="/archive/category/supply-chain">Supply Chain</a></div>
+    <p class="entry-description">Malicious npm packages stole credentials.<script>MCP attack event</script> Apply remediation&#8230;</p>
+  </section>
+  <section class="archive-entry" data-uuid="14945776032059061946">
+    <div class="archive-entry-header">
+      <time datetime="2026-07-30">2026-07-30</time>
+      <h1><a class="entry-title-link" href="https://blog.flatt.tech/entry/rails">Rails CVE-2026-66066</a></h1>
+    </div>
+    <p class="entry-description">Unauthenticated remote code execution.</p>
+  </section>
+</body></html>"""
+
+
 def test_cisa_adapter_registry_is_static_and_minimal() -> None:
-    assert tuple(ADAPTERS) == ("cisa_kev",)
+    assert tuple(ADAPTERS) == ("cisa_kev", "flatt_blog")
 
 
 def test_parse_cisa_kev_normalizes_security_fields() -> None:
@@ -44,6 +82,7 @@ def test_parse_cisa_kev_normalizes_security_fields() -> None:
     assert "Vendor: Example Vendor" in item.content
     assert "Product: Example Gateway" in item.content
     assert "Required action: Apply mitigations" in item.content
+    assert item.categories == ("CISA KEV", "Known Exploited Vulnerability")
     assert "search_api_fulltext=CVE-2026-12345" in (item.url or "")
     assert item.raw_metadata == {
         "vendor_project": "Example Vendor",
@@ -51,7 +90,73 @@ def test_parse_cisa_kev_normalizes_security_fields() -> None:
         "known_ransomware_campaign_use": "Unknown",
         "due_date": "2026-09-02",
         "notes": "https://example.test/advisory",
+        "published_precision": "date",
     }
+
+
+def test_parse_flatt_index_uses_only_article_card_metadata() -> None:
+    first, second = parse_flatt_blog(
+        FLATT_INDEX_HTML,
+        source_id="flatt",
+        source_url="https://blog.flatt.tech/",
+    )
+
+    assert first.id == "hatenablog://entry/14945776032061192456"
+    assert first.title == "keyv software supply-chain attack"
+    assert first.url == "https://blog.flatt.tech/entry/keyv_compromise"
+    assert first.published_at == datetime(2026, 8, 4, tzinfo=UTC)
+    assert first.summary == "Malicious npm packages stole credentials. Apply remediation…"
+    assert first.categories == ("Supply Chain",)
+    assert first.external_ids == ()
+    assert "event" not in first.summary
+    assert first.raw_metadata == {
+        "source_format": "html-index",
+        "published_precision": "date",
+    }
+    assert second.external_ids == ("CVE-2026-66066",)
+
+
+def test_fetch_source_dispatches_flatt_adapter() -> None:
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, content=FLATT_INDEX_HTML)
+    )
+
+    items = fetch_source(flatt_source(), transport=transport)
+
+    assert len(items) == 2
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        b"<html><body>No article cards</body></html>",
+        b'<section class="archive-entry" data-uuid="bad"></section>',
+        b'<section class="archive-entry" data-uuid="1"><time datetime="bad"></time></section>',
+    ],
+)
+def test_parse_flatt_index_rejects_missing_or_invalid_schema(content: bytes) -> None:
+    with pytest.raises(AdapterError):
+        parse_flatt_blog(
+            content,
+            source_id="flatt",
+            source_url="https://blog.flatt.tech/",
+        )
+
+
+def test_parse_flatt_index_rejects_cross_origin_article_url() -> None:
+    content = FLATT_INDEX_HTML.replace(
+        b'href="/entry/keyv_compromise"',
+        b'href="https://attacker.example/entry/keyv_compromise"',
+    )
+
+    items = parse_flatt_blog(
+        content,
+        source_id="flatt",
+        source_url="https://blog.flatt.tech/",
+    )
+
+    assert len(items) == 1
+    assert items[0].title == "Rails CVE-2026-66066"
 
 
 def test_fetch_source_dispatches_cisa_adapter() -> None:

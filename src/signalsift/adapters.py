@@ -5,13 +5,15 @@ import logging
 import re
 import unicodedata
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from html.parser import HTMLParser
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urljoin, urlsplit
 
 import httpx
 
-from signalsift.fetch import FetchError, fetch_bytes, fetch_rss
+from signalsift.fetch import EXTERNAL_ID_PATTERN, FetchError, fetch_bytes, fetch_rss
 from signalsift.models import NormalizedItem, SourceConfig
 
 
@@ -57,6 +59,59 @@ def parse_cisa_kev(content: bytes, *, source_id: str) -> tuple[NormalizedItem, .
             LOGGER.warning("source=%s entry=%d skipped: %s", source_id, index, exc)
     if entries and not items:
         raise AdapterError("CISA KEV document contains no valid entries")
+    return tuple(items)
+
+
+def fetch_flatt_blog(
+    source: SourceConfig,
+    *,
+    transport: httpx.BaseTransport | None = None,
+) -> tuple[NormalizedItem, ...]:
+    if source.type != "html" or source.adapter != "flatt_blog":
+        raise AdapterError(f"source {source.id!r} is not configured for flatt_blog")
+    fetched = fetch_bytes(source.url, transport=transport)
+    return parse_flatt_blog(
+        fetched.content,
+        source_id=source.id,
+        source_url=source.url,
+    )
+
+
+def parse_flatt_blog(
+    content: bytes,
+    *,
+    source_id: str,
+    source_url: str,
+) -> tuple[NormalizedItem, ...]:
+    """Parse only the article cards on the Flatt blog index page."""
+
+    try:
+        document = content.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise AdapterError("invalid Flatt blog HTML encoding") from exc
+    parser = _FlattIndexParser()
+    try:
+        parser.feed(document)
+        parser.close()
+    except ValueError as exc:
+        raise AdapterError(f"invalid Flatt blog HTML: {exc}") from exc
+    if not parser.entries:
+        raise AdapterError("Flatt blog HTML contains no archive entries")
+
+    items: list[NormalizedItem] = []
+    for index, entry in enumerate(parser.entries):
+        try:
+            items.append(
+                _normalize_flatt_entry(
+                    entry,
+                    source_id=source_id,
+                    source_url=source_url,
+                )
+            )
+        except (TypeError, ValueError) as exc:
+            LOGGER.warning("source=%s entry=%d skipped: %s", source_id, index, exc)
+    if not items:
+        raise AdapterError("Flatt blog HTML contains no valid entries")
     return tuple(items)
 
 
@@ -114,9 +169,150 @@ def _normalize_cisa_entry(value: Any, *, source_id: str) -> NormalizedItem:
         published_at=published_at,
         summary=summary,
         content=" ".join(part for part in content_parts if part),
+        categories=("CISA KEV", "Known Exploited Vulnerability"),
         external_ids=(cve_id,),
-        raw_metadata=raw_metadata,
+        raw_metadata={**raw_metadata, "published_precision": "date"},
     )
+
+
+@dataclass(slots=True)
+class _FlattIndexEntry:
+    uuid: str | None
+    published_date: str | None = None
+    title: list[str] = field(default_factory=list)
+    url: str | None = None
+    summary: list[str] = field(default_factory=list)
+    categories: list[str] = field(default_factory=list)
+
+
+class _FlattIndexParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.entries: list[_FlattIndexEntry] = []
+        self._entry: _FlattIndexEntry | None = None
+        self._entry_section_depth = 0
+        self._stack: list[tuple[str, frozenset[str]]] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        classes = frozenset((attributes.get("class") or "").split())
+        if tag == "section" and self._entry is None and "archive-entry" in classes:
+            self._entry = _FlattIndexEntry(uuid=attributes.get("data-uuid"))
+            self._entry_section_depth = 1
+        elif tag == "section" and self._entry is not None:
+            self._entry_section_depth += 1
+
+        self._stack.append((tag, classes))
+        if self._entry is None:
+            return
+        if tag == "a" and "entry-title-link" in classes:
+            self._entry.url = attributes.get("href")
+        elif tag == "time" and self._inside("archive-entry-header"):
+            self._entry.published_date = attributes.get("datetime")
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.handle_starttag(tag, attrs)
+        self.handle_endtag(tag)
+
+    def handle_data(self, data: str) -> None:
+        if self._entry is None or self._inside("script") or self._inside("style"):
+            return
+        if self._inside("entry-title-link"):
+            self._entry.title.append(data)
+        elif self._inside("entry-description"):
+            self._entry.summary.append(data)
+        elif self._inside("categories") and self._stack and self._stack[-1][0] == "a":
+            self._entry.categories.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "section" and self._entry is not None:
+            self._entry_section_depth -= 1
+            if self._entry_section_depth == 0:
+                self.entries.append(self._entry)
+                self._entry = None
+        for index in range(len(self._stack) - 1, -1, -1):
+            if self._stack[index][0] == tag:
+                del self._stack[index:]
+                break
+
+    def _inside(self, class_or_tag: str) -> bool:
+        return any(
+            tag == class_or_tag or class_or_tag in classes
+            for tag, classes in self._stack
+        )
+
+
+def _normalize_flatt_entry(
+    entry: _FlattIndexEntry,
+    *,
+    source_id: str,
+    source_url: str,
+) -> NormalizedItem:
+    uuid = _clean_text(entry.uuid)
+    if not uuid or not uuid.isascii() or not uuid.isdigit():
+        raise ValueError("missing or invalid data-uuid")
+    title = _clean_text(" ".join(entry.title))
+    if not title:
+        raise ValueError("missing title")
+    published_date = _clean_text(entry.published_date)
+    try:
+        published_at = datetime.strptime(published_date, "%Y-%m-%d").replace(tzinfo=UTC)
+    except ValueError as exc:
+        raise ValueError("missing or invalid published date") from exc
+    url = _same_origin_https_url(entry.url, source_url)
+    summary = _clean_text(" ".join(entry.summary))
+    categories = tuple(
+        dict.fromkeys(
+            cleaned
+            for value in entry.categories
+            if (cleaned := _clean_text(value))
+        )
+    )
+    external_ids = tuple(
+        dict.fromkeys(
+            match.upper()
+            for match in EXTERNAL_ID_PATTERN.findall(
+                " ".join((title, summary, *categories))
+            )
+        )
+    )
+    return NormalizedItem(
+        id=f"hatenablog://entry/{uuid}",
+        source_id=source_id,
+        title=title,
+        url=url,
+        published_at=published_at,
+        summary=summary,
+        categories=categories,
+        external_ids=external_ids,
+        raw_metadata={"source_format": "html-index", "published_precision": "date"},
+    )
+
+
+def _same_origin_https_url(value: str | None, source_url: str) -> str:
+    if not value:
+        raise ValueError("missing article URL")
+    resolved = urljoin(source_url, value)
+    source = urlsplit(source_url)
+    article = urlsplit(resolved)
+    if (
+        article.scheme != "https"
+        or article.hostname != source.hostname
+        or article.username is not None
+        or article.password is not None
+    ):
+        raise ValueError("article URL must be same-origin HTTPS")
+    return resolved
+
+
+def _clean_text(value: str | None) -> str:
+    if not value:
+        return ""
+    without_controls = "".join(
+        " " if unicodedata.category(character) == "Cc" else character
+        for character in value
+    )
+    return " ".join(without_controls.split())
 
 
 def _date_added(value: Mapping[str, Any]) -> datetime:
@@ -149,4 +345,5 @@ def _optional_text(value: Mapping[str, Any], key: str) -> str:
 
 ADAPTERS: Mapping[str, Adapter] = {
     "cisa_kev": fetch_cisa_kev,
+    "flatt_blog": fetch_flatt_blog,
 }

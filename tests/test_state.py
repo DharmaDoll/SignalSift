@@ -71,18 +71,9 @@ def test_initial_cutoff_unknown_and_future_dates_are_enforced() -> None:
     assert not is_eligible_item(item(NOW + timedelta(hours=24, seconds=1)), state, now=NOW)
 
 
-def test_cisa_date_added_uses_utc_date_boundary() -> None:
+def test_date_precision_items_use_utc_date_boundary() -> None:
     state = NotificationState(
         initial_cutoff_at=datetime(2026, 8, 11, 18, 30, tzinfo=UTC)
-    )
-    cisa = SourceConfig(
-        id="cisa_kev",
-        name="CISA KEV",
-        enabled=True,
-        type="json",
-        url="https://example.test/kev",
-        priority=3,
-        adapter="cisa_kev",
     )
     kev_item = NormalizedItem(
         "CVE-2026-12345",
@@ -90,17 +81,19 @@ def test_cisa_date_added_uses_utc_date_boundary() -> None:
         "Example",
         "https://example.test/cve",
         datetime(2026, 8, 11, tzinfo=UTC),
+        raw_metadata={"published_precision": "date"},
     )
 
-    assert is_eligible_item(kev_item, state, now=NOW, source=cisa)
+    assert is_eligible_item(kev_item, state, now=NOW)
     older_kev_item = NormalizedItem(
         "CVE-2026-10000",
         "cisa_kev",
         "Older Example",
         "https://example.test/older-cve",
         datetime(2026, 8, 10, tzinfo=UTC),
+        raw_metadata={"published_precision": "date"},
     )
-    assert not is_eligible_item(older_kev_item, state, now=NOW, source=cisa)
+    assert not is_eligible_item(older_kev_item, state, now=NOW)
 
 
 def test_mark_notified_requires_article_key() -> None:
