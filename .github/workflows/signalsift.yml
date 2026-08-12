@@ -21,17 +21,23 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
+
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: "0.11.21"
           python-version: "3.12"
 
       - name: Install
-        run: pip install -e .
+        run: uv sync --locked
+
+      - name: Test
+        run: uv run --locked pytest
 
       - name: Run collector
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: signalsift run
+        run: uv run --locked signalsift run
