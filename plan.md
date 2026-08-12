@@ -92,39 +92,39 @@
 
 ## 7. run-once CLIと障害分離
 
-- [ ] `signalsift run` で設定、Secret、状態を起動前に検証する。
+- [x] `signalsift run` で設定、Secret、状態を起動前に検証する。
 - [x] `--state-path` と、Webhook送信・状態書込を行わない `--dry-run` を実装する。
-- [ ] Fetch → Normalize → pre-filter → cutoff → Score → Dedupe → Slack → Stateの順で統合する。
+- [x] Fetch → Normalize → pre-filter → cutoff → Score → Dedupe → Slack → Stateの順で統合する。
 - [x] 有効sourceだけを処理し、1sourceの失敗後も残りを継続する。
-- [ ] Slack失敗後も残りを送信し、成功分の状態を保存する。
-- [ ] 全成功0、部分・永続化失敗1、構成エラー2の終了codeを実装する。
+- [x] Slack失敗後も残りを送信し、成功分の状態を保存する。
+- [x] 全成功0、部分・永続化失敗1、構成エラー2の終了codeを実装する。
 - [x] sourceごとのfetch、candidate、match、duplicate、notify件数をログに出す。
 - [x] source障害を秘密や本文なしの1件のSlack運用通知へ整形・送信する境界を実装する。
-- [ ] 通常CLIでsource障害の運用通知を呼び出し、dry-runではpreviewだけにする（AC-22）。
-- [ ] Secret、レスポンス全文、記事本文全文をログへ出さない。
-- [ ] source障害、Slack失敗、成功後状態更新を統合テストする（AC-08、AC-12、AC-13）。
+- [x] 通常CLIでsource障害の運用通知を呼び出し、dry-runではpreviewだけにする（AC-22）。
+- [x] Secret、レスポンス全文、記事本文全文をログへ出さない。
+- [x] source障害、Slack失敗、成功後状態更新を統合テストする（AC-08、AC-12、AC-13）。
 
 ## 8. GitHub Actionsとstateブランチ
 
-- [ ] workflowにschedule `17,47 * * * *` と `workflow_dispatch` を定義する。
+- [x] workflowにコメントアウト状態のschedule `17,47 * * * *` と `workflow_dispatch` を定義する。cron有効化は運用者承認後に行う。
 - [x] Python 3.12、10分timeout、`contents: write` だけを設定する。
 - [x] concurrency `signalsift-state` と `cancel-in-progress: false` を設定する。
 - [x] Actionsをcommit SHAで固定し、checkout credentialsを永続化しない。
 - [x] commit SHA固定のsetup actionで `uv` を準備し、`uv sync/run --locked` でテストとCLIを実行する。
-- [ ] `state` ブランチ不在の初回作成と既存状態取得を実装する。
-- [ ] CLIが1でも成功分状態を保存し、差分がある場合だけcommit・pushする。
-- [ ] state保存後にCLI結果をjobへ反映し、push失敗をjob失敗にする。
+- [x] `state` ブランチ不在の初回作成と既存状態取得をWorkflowへ実装する。
+- [x] CLIが1でも成功分状態を保存し、差分がある場合だけcommit・pushする。
+- [x] state保存後にCLI結果をjobへ反映し、push失敗をjob失敗にする。
 
 ## 9. 受入試験、セキュリティ、文書
 
-- [ ] RSS、Atom、RDF、Flatt HTML、KEV、状態、Slack応答のfixtureを揃える。
-- [ ] AC-01～AC-22の各項目が少なくとも1つの自動テストへ対応することを確認する。
-- [ ] 外部networkと実Webhookなしで全テストを成功させる。
-- [ ] 固定時計で実行順に依存しないことと、同じ入力の決定性を確認する。
-- [ ] HTTPS、XML、size、redirect、Slack escape、Secret非露出をレビューする。
-- [ ] CoreにCVE必須前提や未使用plugin/profile frameworkがないことをレビューする。
-- [ ] READMEへinstall、実行、Secret、state、設定変更、テスト、障害時動作を記載する。
-- [ ] 仕様書、設定、実装、READMEの矛盾がないことを確認する。
+- [x] RSS、Atom、RDF、Flatt HTML、KEV、状態、Slack応答のfixtureを揃える。
+- [x] AC-01～AC-25の各項目が少なくとも1つの自動テストへ対応することを確認する。
+- [x] 外部networkと実Webhookなしで全テストを成功させる。
+- [x] 固定時計で実行順に依存しないことと、同じ入力の決定性を確認する。
+- [x] HTTPS、XML、size、redirect、Slack escape、Secret非露出をレビューする。
+- [x] CoreにCVE必須前提や未使用plugin/profile frameworkがないことをレビューする。
+- [x] READMEへinstall、実行、Secret、state、設定変更、テスト、障害時動作を記載する。
+- [x] 仕様書、設定、実装、READMEの矛盾がないことを確認する。
 
 ## 10. 手動試運転とschedule有効化
 
@@ -139,9 +139,9 @@
 
 ## Definition of Done
 
-- [ ] `signalsift run` が有効な7情報源を独立して処理する。
-- [ ] 重要な3領域だけを説明可能なscoreで低ノイズ通知する。
-- [ ] Slack成功前に状態を更新せず、正常時に同一記事を再通知しない。
-- [ ] runnerをまたいでstateを維持し、初回の過去記事をbackfillしない。
-- [ ] AC-01～AC-22がローカルfixtureだけで成功する。
-- [ ] 外部DB、常駐server、内部scheduler、必須LLM、plugin frameworkを含まない。
+- [x] `signalsift run` が有効な8情報源を独立して処理する。
+- [x] 重要な3領域だけを説明可能なscoreで低ノイズ通知する。
+- [x] Slack成功前に状態を更新せず、正常時に同一記事を再通知しない。
+- [x] runnerをまたいでstateを維持し、初回の過去記事をbackfillしない。
+- [x] AC-01～AC-25がローカルfixtureだけで成功する。
+- [x] 外部DB、常駐server、内部scheduler、必須LLM、plugin frameworkを含まない。

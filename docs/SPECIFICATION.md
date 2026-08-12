@@ -6,7 +6,7 @@
 | 対象 | SignalSift Core + 2つのセキュリティProfile + Slack通知 |
 | 文書バージョン | 1.0 |
 | 基準日 | 2026-08-10 |
-| 実装状態 | 仕様策定済み・アプリケーション本体は未実装 |
+| 実装状態 | Core、Profile別filter、Slack送信、state保存、Workflowは実装済み。cron有効化と本番Secret設定は運用者の承認・設定待ち |
 
 ## 1. 文書の目的
 
@@ -153,7 +153,7 @@ GitHub Actionsは `state` ブランチの内容を上記パスへ準備してか
 
 `--profile` の既定値は `supply-chain-vulnerability` とする。`--state-path` は選択Profileの状態ファイルを上書きする。ローカルでは `.local/state/supply_chain_vulnerability.json` と `.local/state/ai_security.json` のように分離する。
 
-`--dry-run` は取得、正規化、フィルター、score、重複判定、通知本文生成までを実行するが、Slackへ送信せず、状態ファイルも作成・変更しない。Webhook URLは不要とし、採用候補のtitle、source、score、`why_matched`、通知予定形式を安全なプレーンテキストで標準出力へ表示する。取得・解析等の障害に対する終了コードは通常実行と同じとする。
+`--dry-run` は取得、正規化、フィルター、score、重複判定、通知本文生成までを実行するが、Slackへ送信せず、状態ファイルも作成・変更しない。Webhook URLは不要とし、採用候補のtitle、source、score、`why_matched`、通知予定形式を安全なプレーンテキストで標準出力へ表示する。通常実行では選択ProfileのWebhookへ送信し、Slack成功記事だけを状態へ追加する。取得・解析等の障害や送信失敗の終了コードは通常実行と同じとする。
 
 `--review-lookback-hours HOURS` は正の整数とし、`--dry-run` とだけ併用できる精度調整用オプションとする。指定時は保存済みの `initial_cutoff_at` と通知履歴を一時的に無視し、実行時刻から指定時間を遡った記事を再評価する。本番設定の24時間、状態ファイル、Slackには影響を与えない。通常の `--dry-run` は保存済みcutoffと通知履歴を尊重する。
 

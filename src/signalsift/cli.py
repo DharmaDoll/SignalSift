@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
@@ -22,8 +23,22 @@ from signalsift.models import (
     load_filter_config,
     load_sources_config,
 )
-from signalsift.slack import build_notification_batches, build_source_failure_alert
-from signalsift.state import NotificationState, StateError, is_eligible_item, load_state
+from signalsift.slack import (
+    build_notification_batches,
+    build_source_failure_alert,
+    send_notification_batches,
+    send_operational_alert,
+    SlackError,
+)
+from signalsift.state import (
+    NotificationState,
+    StateError,
+    is_eligible_item,
+    load_state,
+    mark_notified,
+    prune_state,
+    save_state,
+)
 
 
 Fetcher = Callable[[SourceConfig], tuple[NormalizedItem, ...]]
@@ -68,8 +83,6 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.review_lookback_hours is not None and not args.dry_run:
         parser.error("--review-lookback-hours requires --dry-run")
-    if not args.dry_run:
-        parser.exit(2, "signalsift run: live delivery pipeline is not implemented yet\n")
 
     try:
         sources = load_sources_config(Path("config/sources.yaml"))
@@ -90,13 +103,22 @@ def main(argv: Sequence[str] | None = None) -> int:
                 + ", ".join(unknown_force_sources)
             )
         state_path = args.state_path or _default_state_path(filters.profile.id)
+        webhook_url = None
+        if not args.dry_run:
+            webhook_url = os.environ.get(filters.profile.webhook_env)
+            if not webhook_url:
+                raise ConfigError(
+                    f"required webhook environment variable is missing: {filters.profile.webhook_env}"
+                )
         return run_dry_cycle(
             sources,
             filters,
             state_path=state_path,
             review_lookback_hours=args.review_lookback_hours,
+            deliver=not args.dry_run,
+            webhook_url=webhook_url,
         )
-    except (ConfigError, StateError) as exc:
+    except (ConfigError, StateError, SlackError) as exc:
         parser.exit(2, f"configuration error: {exc}\n")
 
 
@@ -109,8 +131,15 @@ def run_dry_cycle(
     now: datetime | None = None,
     fetcher: Fetcher = fetch_source,
     output: TextIOBase | None = None,
+    deliver: bool = False,
+    webhook_url: str | None = None,
 ) -> int:
-    """Run through notification rendering without sending or writing state."""
+    """Run one collection cycle, optionally delivering and persisting successes."""
+
+    if deliver and review_lookback_hours is not None:
+        raise ConfigError("live delivery cannot use review lookback")
+    if deliver and not webhook_url:
+        raise ConfigError("live delivery requires a webhook URL")
 
     output = output or sys.stdout
     current_time = (now or datetime.now(UTC)).astimezone(UTC)
@@ -123,13 +152,14 @@ def run_dry_cycle(
         notified_keys: frozenset[str] = frozenset()
         mode = f"review profile={filters.profile.id} lookback_hours={review_lookback_hours}"
     else:
+        state_existed = state_path.exists()
         state = load_state(
             state_path,
             now=current_time,
             initial_lookback_hours=filters.notification.initial_lookback_hours,
         )
         notified_keys = frozenset(state.items)
-        mode = f"dry-run profile={filters.profile.id}"
+        mode = f"{'live' if deliver else 'dry-run'} profile={filters.profile.id}"
 
     print(
         f"mode={mode} now={_format_datetime(current_time)} "
@@ -192,16 +222,47 @@ def run_dry_cycle(
     results = tuple(all_results)
     source_map = {source.id: source for source in sources.enabled_sources}
     source_failures = tuple(stat for stat in stats if stat.fetch_status == "failed")
+    delivery_failed = False
+    state_changed = False
     if source_failures:
         print("\n--- operational-alert-preview ---", file=output)
-        print(build_source_failure_alert(source_failures, source_map), file=output)
+        operational_text = build_source_failure_alert(source_failures, source_map)
+        if deliver:
+            operational_error = send_operational_alert(webhook_url or "", operational_text)
+            if operational_error is not None:
+                delivery_failed = True
+                print(f"operational alert failed: {operational_error}", file=output)
+        else:
+            print(operational_text, file=output)
     batches = build_notification_batches(
         results,
         source_map,
         max_individual_messages=filters.notification.max_individual_messages_per_run,
     )
     ordered_results = tuple(result for batch in batches for result in batch.results)
-    if review_lookback_hours is not None:
+    if deliver:
+        report = send_notification_batches(webhook_url or "", batches)
+        notification_time = current_time
+        for succeeded in report.succeeded:
+            mark_notified(state, succeeded, notified_at=notification_time)
+        if not report.ok:
+            delivery_failed = True
+        for failure in report.failures:
+            delivery_failed = True
+            print(f"notification failed: {failure.error}", file=output)
+        pruned = prune_state(
+            state,
+            now=current_time,
+            retention_days=filters.notification.state_retention_days,
+        )
+        state_changed = bool(report.succeeded) or pruned > 0 or not state_existed
+        if state_changed:
+            save_state(state_path, state)
+        for stat in stats:
+            stat.notified_count = sum(
+                result.item.source_id == stat.source_id for result in report.succeeded
+            )
+    elif review_lookback_hours is not None:
         for index, result in enumerate(ordered_results, start=1):
             _print_review_candidate(index, result, source_map[result.item.source_id], output)
         for index, (item, source, reason) in enumerate(review_dropped, start=1):
@@ -216,22 +277,28 @@ def run_dry_cycle(
         f"candidates={sum(s.candidate_count for s in stats)} "
         f"matched={sum(s.matched_count for s in stats)} "
         f"duplicates={sum(s.duplicate_count for s in stats)} "
-        f"notifications={len(results)} batches={len(batches)} state_changed=false slack_sent=false",
+        f"notifications={len(results)} batches={len(batches)} "
+        f"state_changed={_format_bool(state_changed)} "
+        f"slack_sent={_format_bool(deliver and not delivery_failed)}",
         f"review_dropped={len(review_dropped)}",
         file=output,
     )
-    return 1 if had_source_failure else 0
+    return 1 if had_source_failure or delivery_failed else 0
 
 
 def _print_source_stats(stats: SourceRunStats, output: TextIOBase) -> None:
     line = (
         f"source={stats.source_id} fetch={stats.fetch_status} fetched={stats.fetched_count} "
         f"candidates={stats.candidate_count} matched={stats.matched_count} "
-        f"duplicates={stats.duplicate_count} notified=0"
+        f"duplicates={stats.duplicate_count} notified={stats.notified_count}"
     )
     if stats.error:
         line += f" error={stats.error}"
     print(line, file=output)
+
+
+def _format_bool(value: bool) -> str:
+    return "true" if value else "false"
 
 
 def _print_review_candidate(

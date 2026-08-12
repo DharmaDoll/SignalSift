@@ -101,7 +101,7 @@ uv run --locked signalsift run --profile supply-chain-vulnerability --dry-run --
 
 Dry-run fetches and evaluates items but does not call Slack or modify notification state. The optional `--review-lookback-hours` mode ignores notification history in memory and prints both selected and rejected recent items for filter review. It does not change the production `initial_lookback_hours: 24` policy.
 
-Live Slack delivery is not wired into the CLI yet. After that implementation is complete, an end-to-end local run will use a test-channel webhook and state kept separate from the GitHub Actions ledger:
+Live Slack delivery is available as a run-once CLI path. It uses a Profile-specific webhook and a local state path, kept separate from the GitHub Actions ledger:
 
 ```bash
 export SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY="..."
@@ -123,6 +123,8 @@ config/ai_security.yaml
 ```
 
 The two profiles use independent state files and can deliver to independent Slack webhooks.
+
+運用開始手順、Secret設定、初回実行、cron有効化、障害対応は[docs/OPERATIONS.md](docs/OPERATIONS.md)を参照してください。
 
 ### `sources.yaml`
 
