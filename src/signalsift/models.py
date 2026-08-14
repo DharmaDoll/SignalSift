@@ -12,7 +12,9 @@ import yaml
 
 
 SOURCE_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
-BUILTIN_ADAPTERS = frozenset({"cisa_kev", "flatt_blog"})
+BUILTIN_ADAPTERS = frozenset(
+    {"cisa_kev", "flatt_blog", "huntr_blog", "lakera_blog", "hiddenlayer_research"}
+)
 
 
 class ConfigError(ValueError):
@@ -170,6 +172,19 @@ class SourceRunStats:
 def load_sources_config(path: Path) -> SourcesConfig:
     root = _load_yaml(path)
     _reject_unknown(root, {"sources"}, "sources config")
+    return _parse_sources_root(root)
+
+
+def load_profile_sources_config(path: Path) -> tuple[SourcesConfig, "FilterConfig"]:
+    """Load a profile file that owns both its filter and source definitions."""
+
+    root = _load_yaml(path)
+    sources = _parse_sources_root(root)
+    filters = _parse_filter_root(root, allow_sources=True)
+    return sources, filters
+
+
+def _parse_sources_root(root: Mapping[str, Any]) -> SourcesConfig:
     source_rows = _require_sequence(root.get("sources"), "sources")
     sources = tuple(_parse_source(row, index) for index, row in enumerate(source_rows))
     source_ids = [source.id for source in sources]
@@ -181,6 +196,10 @@ def load_sources_config(path: Path) -> SourcesConfig:
 
 def load_filter_config(path: Path) -> FilterConfig:
     root = _load_yaml(path)
+    return _parse_filter_root(root)
+
+
+def _parse_filter_root(root: Mapping[str, Any], *, allow_sources: bool = False) -> FilterConfig:
     expected = {
         "profile",
         "notification",
@@ -190,6 +209,8 @@ def load_filter_config(path: Path) -> FilterConfig:
         "watch_terms",
         "source_priority_score",
     }
+    if allow_sources:
+        expected.add("sources")
     _reject_unknown(root, expected, "filter config")
     required = {
         "profile",

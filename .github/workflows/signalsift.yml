@@ -6,6 +6,12 @@ on:
   #   - cron: "17,47 * * * *"
 
   workflow_dispatch:
+    inputs:
+      simulate_delivery:
+        description: Test both profiles without Slack, persisting to state-test
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -37,7 +43,7 @@ jobs:
       - name: Test
         run: uv run --locked pytest
 
-      - name: Run collector
+      - name: Run collector and persist state
         env:
           SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY: ${{ secrets.SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY }}
           SLACK_WEBHOOK_URL_AI_SECURITY: ${{ secrets.SLACK_WEBHOOK_URL_AI_SECURITY }}
@@ -60,16 +66,25 @@ jobs:
           cleanup() { rm -f "$RUNNER_TEMP/signalsift-askpass.sh"; }
           trap cleanup EXIT
 
+          simulation="${{ github.event_name == 'workflow_dispatch' && inputs.simulate_delivery }}"
+          state_branch=state
+          simulation_flag=()
+          if [ "$simulation" = "true" ]; then
+            state_branch=state-test
+            simulation_flag=(--simulate-delivery)
+          fi
+          echo "state_branch=${state_branch} simulated_delivery=${simulation}"
+
           state_probe=0
-          git ls-remote --exit-code --heads origin state >/dev/null || state_probe=$?
+          git ls-remote --exit-code --heads origin "$state_branch" >/dev/null || state_probe=$?
           if [ "$state_probe" -eq 0 ]; then
-            git fetch origin state:refs/remotes/origin/state
+            git fetch origin "$state_branch:refs/remotes/origin/$state_branch"
           elif [ "$state_probe" -ne 2 ]; then
-            echo "cannot inspect origin/state (git status $state_probe)" >&2
+            echo "cannot inspect origin/$state_branch (git status $state_probe)" >&2
             exit 1
           fi
           for state_file in supply_chain_vulnerability ai_security; do
-            if git show "origin/state:state/${state_file}.json" > "$RUNNER_TEMP/${state_file}.json" 2>/dev/null; then
+            if git show "origin/$state_branch:state/${state_file}.json" > "$RUNNER_TEMP/${state_file}.json" 2>/dev/null; then
               mv "$RUNNER_TEMP/${state_file}.json" ".local/state/${state_file}.json"
             fi
           done
@@ -78,9 +93,11 @@ jobs:
           ai_status=0
           uv run --locked signalsift run \
             --profile supply-chain-vulnerability \
+            "${simulation_flag[@]}" \
             --state-path .local/state/supply_chain_vulnerability.json || supply_status=$?
           uv run --locked signalsift run \
             --profile ai-security \
+            "${simulation_flag[@]}" \
             --state-path .local/state/ai_security.json || ai_status=$?
 
           mkdir -p "$RUNNER_TEMP/signalsift-state"
@@ -89,10 +106,10 @@ jobs:
               cp "$state_path" "$RUNNER_TEMP/signalsift-state/"
             fi
           done
-          if git show-ref --verify --quiet refs/remotes/origin/state; then
-            git checkout -B state origin/state
+          if git show-ref --verify --quiet "refs/remotes/origin/$state_branch"; then
+            git checkout -B "$state_branch" "origin/$state_branch"
           else
-            git checkout --orphan state
+            git checkout --orphan "$state_branch"
             git rm -rf .
           fi
           mkdir -p state
@@ -105,8 +122,8 @@ jobs:
           if ! git diff --cached --quiet; then
             git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-              commit -m "chore: persist SignalSift notification state"
-            git push origin state
+              commit -m "chore: persist SignalSift ${state_branch} notification state"
+            git push origin "$state_branch"
           fi
 
           if [ "$supply_status" -ne 0 ] || [ "$ai_status" -ne 0 ]; then

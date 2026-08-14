@@ -13,6 +13,7 @@ from signalsift.adapters import (
     fetch_source,
     parse_cisa_kev,
     parse_flatt_blog,
+    parse_html_index,
 )
 from signalsift.models import SourceConfig
 
@@ -48,7 +49,21 @@ FLATT_INDEX_HTML = (FIXTURES / "flatt_index.html").read_bytes()
 
 
 def test_cisa_adapter_registry_is_static_and_minimal() -> None:
-    assert tuple(ADAPTERS) == ("cisa_kev", "flatt_blog")
+    assert tuple(ADAPTERS) == ("cisa_kev", "flatt_blog", "huntr_blog", "lakera_blog", "hiddenlayer_research")
+
+
+@pytest.mark.parametrize(
+    ("adapter", "html", "title"),
+    [
+        ("huntr_blog", '<a data-page-track-value="en-us:cards-list:AI RCE" href="/inside-ai-rce">AI RCE</a>', "AI RCE"),
+        ("lakera_blog", '<a href="/blog/prompt-injection"><div class="heading-style-h5-fn">Prompt Injection</div></a>', "Prompt Injection"),
+        ("hiddenlayer_research", '<div fs-list-field="title">Agent Attack</div><a href="/research/agent-attack"></a>', "Agent Attack"),
+    ],
+)
+def test_parse_html_research_index(adapter: str, html: str, title: str) -> None:
+    (item,) = parse_html_index(html.encode(), source_id=adapter, source_url="https://example.test/", adapter=adapter)
+    assert item.title == title
+    assert item.url == f"https://example.test/{'inside-ai-rce' if adapter == 'huntr_blog' else 'blog/prompt-injection' if adapter == 'lakera_blog' else 'research/agent-attack'}"
 
 
 def test_parse_cisa_kev_normalizes_security_fields() -> None:

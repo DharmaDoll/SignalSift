@@ -4,14 +4,21 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from signalsift.filter import evaluate_item, item_match_text, passes_source_filter, term_matches
-from signalsift.models import NormalizedItem, SourceConfig, load_filter_config, load_sources_config
+from signalsift.models import (
+    NormalizedItem,
+    SourceConfig,
+    load_profile_sources_config,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SECURITY = load_filter_config(ROOT / "config/supply_chain_vulnerability.yaml")
-AI_SECURITY = load_filter_config(ROOT / "config/ai_security.yaml")
+_, SECURITY = load_profile_sources_config(ROOT / "config/supply_chain_sources.yaml")
+_, AI_SECURITY = load_profile_sources_config(ROOT / "config/ai_security.yaml")
 SOURCES = {
-    source.id: source for source in load_sources_config(ROOT / "config/sources.yaml").sources
+    source.id: source
+    for source in load_profile_sources_config(
+        ROOT / "config/supply_chain_sources.yaml"
+    )[0].sources
 }
 
 
@@ -291,7 +298,32 @@ def test_ai_security_requires_ai_and_security_context() -> None:
     )
 
 
-def test_ai_profile_rejects_ai_as_research_method_and_bare_agent() -> None:
+def test_sans_isc_excludes_stormcast_and_selects_profile_signals() -> None:
+    sans_isc = SOURCES["sans_isc"]
+    stormcast = item(
+        "sans_isc",
+        "ISC Stormcast For Friday, August 14th, 2026",
+    )
+    exploited_vulnerability = item(
+        "sans_isc",
+        "Microsoft Patch Tuesday",
+        "One vulnerability is exploited in the wild and two are zero-days.",
+    )
+    ai_attack = item(
+        "sans_isc",
+        "Prompt injection targeting LLM agents",
+        "The attack enabled credential theft through a malicious tool response.",
+    )
+
+    assert not passes_source_filter(stormcast, sans_isc)
+    supply_result = evaluate_item(exploited_vulnerability, sans_isc, SECURITY)
+    assert supply_result is not None
+    assert supply_result.score == 7
+    ai_result = evaluate_item(ai_attack, sans_isc, AI_SECURITY)
+    assert ai_result is not None
+    assert ai_result.score == 7
+
+def test_ai_profile_rejects_generic_security_without_ai_context() -> None:
     metabase = evaluate_item(
         item(
             "wiz",
@@ -335,24 +367,21 @@ def test_ai_profile_selects_exposed_mcp_command_execution() -> None:
     )
 
 
-def test_ai_profile_selects_ai_models_researching_cves() -> None:
+def test_ai_profile_selects_llm_researching_cves() -> None:
     result = evaluate_item(
-        item("aikido", "Benchmarking 13 AI models on rediscovering known CVEs"),
+        item("aikido", "Benchmarking LLM vulnerabilities by rediscovering known CVEs"),
         SOURCES["aikido"],
         AI_SECURITY,
     )
 
     assert result is not None
-    assert "ai-models" in result.why_matched
+    assert "llm" in result.why_matched
     assert "cves" in result.why_matched
-    assert (
-        evaluate_item(
-            item("wiz", "Critical authentication bypass vulnerability"),
-            SOURCES["wiz"],
-            AI_SECURITY,
-        )
-        is None
-    )
+    assert evaluate_item(
+        item("wiz", "Critical authentication bypass vulnerability"),
+        SOURCES["wiz"],
+        AI_SECURITY,
+    ) is None
 
 
 def test_ai_agents_attacking_real_organizations_is_selected() -> None:
@@ -360,7 +389,7 @@ def test_ai_agents_attacking_real_organizations_is_selected() -> None:
         item(
             "aikido",
             "Who was behind the attack? Possibly nobody",
-            "AI agents attacking real organizations with no human intent.",
+            "Agentic systems attacking real organizations with no human intent.",
         ),
         SOURCES["aikido"],
         AI_SECURITY,
@@ -370,7 +399,7 @@ def test_ai_agents_attacking_real_organizations_is_selected() -> None:
     assert result.score == 7
     assert result.why_matched == (
         "ai-security",
-        "ai-agents",
+        "agentic",
         "attack",
         "source-priority:2",
     )
