@@ -814,12 +814,13 @@ HTTP取得失敗、Feed/JSON解析失敗、Flattの記事カードが1件も解�
 
 1. 実行対象commitをcheckoutする。認証情報の不要な永続化を避ける設定を用いる。
 2. commit SHAで固定した公式setup actionを用いて `uv` とPython 3.12を準備する。
-3. `state` ブランチから状態ファイルを取得する。ブランチ不在は初回として扱う。
-4. `uv sync --locked` と `uv run --locked pytest` でlock済み環境とテストを確認する。
-5. 必要ならdev依存を除いた環境へ同期し、`uv run --locked signalsift run` を実行する。
+3. `uv sync --locked` と `uv run --locked pytest` でlock済み環境とテストを確認する。
+4. Git認証を準備し、通常実行は`state`、シミュレーションは`state-test`から状態ファイルを取得する。ブランチ不在は初回として扱う。
+5. 2つのProfileを独立したStepで実行し、一方が失敗しても他方を実行する。
 6. CLIが部分障害を報告しても、成功済み通知の状態保存を試みる。
-7. 状態ファイルに差分がある場合だけ `state` ブランチへcommit・pushする。
-8. CLIまたは状態保存が失敗していればジョブを失敗として終了する。
+7. 状態ファイルに差分がある場合だけ選択したstateブランチへcommit・pushする。
+8. 一時的なGit認証ファイルを成功・失敗にかかわらず削除する。
+9. Profile実行または状態保存が失敗していればジョブを失敗として終了する。
 
 Actions Cacheを通知履歴の正本にしない。
 

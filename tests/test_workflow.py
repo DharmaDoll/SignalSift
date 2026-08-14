@@ -20,7 +20,8 @@ def test_workflow_keeps_schedule_disabled_until_operations_enable_it() -> None:
 def test_workflow_dispatch_can_simulate_state_without_slack() -> None:
     document = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     dispatch = document[True]["workflow_dispatch"]
-    collector = document["jobs"]["collect"]["steps"][4]
+    job = document["jobs"]["collect"]
+    steps = {step["name"]: step for step in job["steps"]}
 
     assert dispatch["inputs"]["simulate_delivery"] == {
         "description": "Test both profiles without Slack, persisting to state-test",
@@ -28,10 +29,53 @@ def test_workflow_dispatch_can_simulate_state_without_slack() -> None:
         "default": True,
         "type": "boolean",
     }
-    assert collector["name"] == "Run collector and persist state"
-    assert "state_branch=state-test" in collector["run"]
-    assert "simulation_flag=(--simulate-delivery)" in collector["run"]
-    assert 'git push origin "$state_branch"' in collector["run"]
+    assert "'state-test' || 'state'" in job["env"]["STATE_BRANCH"]
+    assert "inputs.simulate_delivery" in job["env"]["SIMULATE_DELIVERY"]
+    assert "simulation_flag=(--simulate-delivery)" in steps[
+        "Run Supply Chain Vulnerability profile"
+    ]["run"]
+    assert "simulation_flag=(--simulate-delivery)" in steps[
+        "Run AI Security profile"
+    ]["run"]
+    assert 'git push origin "$STATE_BRANCH"' in steps["Persist notification state"]["run"]
+
+
+def test_workflow_keeps_failure_and_state_boundaries_explicit() -> None:
+    document = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    steps = document["jobs"]["collect"]["steps"]
+    names = [step["name"] for step in steps]
+    by_name = {step["name"]: step for step in steps}
+
+    assert names == [
+        "Checkout",
+        "Set up uv and Python",
+        "Install",
+        "Test",
+        "Configure Git authentication",
+        "Load notification state",
+        "Run Supply Chain Vulnerability profile",
+        "Run AI Security profile",
+        "Persist notification state",
+        "Remove Git credentials",
+        "Report collector failure",
+    ]
+    assert by_name["Run Supply Chain Vulnerability profile"]["continue-on-error"] is True
+    assert by_name["Run AI Security profile"]["continue-on-error"] is True
+    assert set(by_name["Run Supply Chain Vulnerability profile"]["env"]) == {
+        "SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY"
+    }
+    assert set(by_name["Run AI Security profile"]["env"]) == {
+        "SLACK_WEBHOOK_URL_AI_SECURITY"
+    }
+    assert set(by_name["Load notification state"]["env"]) == {"GITHUB_TOKEN"}
+    assert set(by_name["Persist notification state"]["env"]) == {"GITHUB_TOKEN"}
+    assert by_name["Persist notification state"]["if"] == (
+        "always() && steps.load_state.outcome == 'success'"
+    )
+    assert by_name["Remove Git credentials"]["if"] == "always()"
+    failure_condition = by_name["Report collector failure"]["if"]
+    assert "steps.run_supply_chain.outcome == 'failure'" in failure_condition
+    assert "steps.run_ai_security.outcome == 'failure'" in failure_condition
 
 
 def test_workflow_does_not_put_github_token_in_remote_url() -> None:
@@ -45,9 +89,9 @@ def test_workflow_does_not_put_github_token_in_remote_url() -> None:
 def test_workflow_distinguishes_missing_state_branch_from_git_failure() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
 
-    assert 'git ls-remote --exit-code --heads origin "$state_branch"' in text
-    assert '"$state_probe" -ne 2' in text
-    assert "cannot inspect origin/$state_branch" in text
+    assert 'git ls-remote --exit-code --heads origin "$STATE_BRANCH"' in text
+    assert '"$state_probe" -eq 2' in text
+    assert "cannot inspect origin/$STATE_BRANCH" in text
 
 
 def test_workflow_yaml_is_valid() -> None:

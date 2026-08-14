@@ -24,6 +24,9 @@ jobs:
   collect:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      STATE_BRANCH: ${{ (github.event_name == 'workflow_dispatch' && inputs.simulate_delivery) && 'state-test' || 'state' }}
+      SIMULATE_DELIVERY: ${{ github.event_name == 'workflow_dispatch' && inputs.simulate_delivery }}
 
     steps:
       - name: Checkout
@@ -43,15 +46,10 @@ jobs:
       - name: Test
         run: uv run --locked pytest
 
-      - name: Run collector and persist state
-        env:
-          SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY: ${{ secrets.SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY }}
-          SLACK_WEBHOOK_URL_AI_SECURITY: ${{ secrets.SLACK_WEBHOOK_URL_AI_SECURITY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Configure Git authentication
         shell: bash
         run: |
           set -Eeuo pipefail
-          mkdir -p .local/state
           git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
           cat > "$RUNNER_TEMP/signalsift-askpass.sh" <<'EOF'
           #!/bin/sh
@@ -61,57 +59,94 @@ jobs:
           esac
           EOF
           chmod 700 "$RUNNER_TEMP/signalsift-askpass.sh"
-          export GIT_ASKPASS="$RUNNER_TEMP/signalsift-askpass.sh"
-          export GIT_TERMINAL_PROMPT=0
-          cleanup() { rm -f "$RUNNER_TEMP/signalsift-askpass.sh"; }
-          trap cleanup EXIT
+          echo "GIT_ASKPASS=$RUNNER_TEMP/signalsift-askpass.sh" >> "$GITHUB_ENV"
+          echo "GIT_TERMINAL_PROMPT=0" >> "$GITHUB_ENV"
 
-          simulation="${{ github.event_name == 'workflow_dispatch' && inputs.simulate_delivery }}"
-          state_branch=state
-          simulation_flag=()
-          if [ "$simulation" = "true" ]; then
-            state_branch=state-test
-            simulation_flag=(--simulate-delivery)
-          fi
-          echo "state_branch=${state_branch} simulated_delivery=${simulation}"
+      - name: Load notification state
+        id: load_state
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p .local/state
+          echo "state_branch=${STATE_BRANCH} simulated_delivery=${SIMULATE_DELIVERY}"
 
           state_probe=0
-          git ls-remote --exit-code --heads origin "$state_branch" >/dev/null || state_probe=$?
+          git ls-remote --exit-code --heads origin "$STATE_BRANCH" >/dev/null || state_probe=$?
           if [ "$state_probe" -eq 0 ]; then
-            git fetch origin "$state_branch:refs/remotes/origin/$state_branch"
-          elif [ "$state_probe" -ne 2 ]; then
-            echo "cannot inspect origin/$state_branch (git status $state_probe)" >&2
+            git fetch origin "$STATE_BRANCH:refs/remotes/origin/$STATE_BRANCH"
+            echo "branch_exists=true" >> "$GITHUB_OUTPUT"
+          elif [ "$state_probe" -eq 2 ]; then
+            echo "branch_exists=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "cannot inspect origin/$STATE_BRANCH (git status $state_probe)" >&2
             exit 1
           fi
+
           for state_file in supply_chain_vulnerability ai_security; do
-            if git show "origin/$state_branch:state/${state_file}.json" > "$RUNNER_TEMP/${state_file}.json" 2>/dev/null; then
-              mv "$RUNNER_TEMP/${state_file}.json" ".local/state/${state_file}.json"
+            remote_path="origin/$STATE_BRANCH:state/${state_file}.json"
+            local_path=".local/state/${state_file}.json"
+            if git show "$remote_path" > "$RUNNER_TEMP/${state_file}.json" 2>/dev/null; then
+              mv "$RUNNER_TEMP/${state_file}.json" "$local_path"
             fi
           done
 
-          supply_status=0
-          ai_status=0
+      - name: Run Supply Chain Vulnerability profile
+        id: run_supply_chain
+        continue-on-error: true
+        env:
+          SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY: ${{ secrets.SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          simulation_flag=()
+          if [ "$SIMULATE_DELIVERY" = "true" ]; then
+            simulation_flag=(--simulate-delivery)
+          fi
           uv run --locked signalsift run \
             --profile supply-chain-vulnerability \
             "${simulation_flag[@]}" \
-            --state-path .local/state/supply_chain_vulnerability.json || supply_status=$?
+            --state-path .local/state/supply_chain_vulnerability.json
+
+      - name: Run AI Security profile
+        id: run_ai_security
+        continue-on-error: true
+        env:
+          SLACK_WEBHOOK_URL_AI_SECURITY: ${{ secrets.SLACK_WEBHOOK_URL_AI_SECURITY }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          simulation_flag=()
+          if [ "$SIMULATE_DELIVERY" = "true" ]; then
+            simulation_flag=(--simulate-delivery)
+          fi
           uv run --locked signalsift run \
             --profile ai-security \
             "${simulation_flag[@]}" \
-            --state-path .local/state/ai_security.json || ai_status=$?
+            --state-path .local/state/ai_security.json
 
+      - name: Persist notification state
+        if: always() && steps.load_state.outcome == 'success'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
           mkdir -p "$RUNNER_TEMP/signalsift-state"
           for state_path in .local/state/*.json; do
             if [ -f "$state_path" ]; then
               cp "$state_path" "$RUNNER_TEMP/signalsift-state/"
             fi
           done
-          if git show-ref --verify --quiet "refs/remotes/origin/$state_branch"; then
-            git checkout -B "$state_branch" "origin/$state_branch"
+
+          if [ "${{ steps.load_state.outputs.branch_exists }}" = "true" ]; then
+            git checkout -B "$STATE_BRANCH" "origin/$STATE_BRANCH"
           else
-            git checkout --orphan "$state_branch"
+            git checkout --orphan "$STATE_BRANCH"
             git rm -rf .
           fi
+
           mkdir -p state
           for state_path in "$RUNNER_TEMP/signalsift-state"/*.json; do
             if [ -f "$state_path" ]; then
@@ -122,10 +157,18 @@ jobs:
           if ! git diff --cached --quiet; then
             git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-              commit -m "chore: persist SignalSift ${state_branch} notification state"
-            git push origin "$state_branch"
+              commit -m "chore: persist SignalSift ${STATE_BRANCH} notification state"
+            git push origin "$STATE_BRANCH"
           fi
 
-          if [ "$supply_status" -ne 0 ] || [ "$ai_status" -ne 0 ]; then
-            exit 1
-          fi
+      - name: Remove Git credentials
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/signalsift-askpass.sh"
+
+      - name: Report collector failure
+        if: always() && (steps.run_supply_chain.outcome == 'failure' || steps.run_ai_security.outcome == 'failure')
+        shell: bash
+        run: |
+          echo "one or more profiles failed; successful notification state was persisted" >&2
+          exit 1
