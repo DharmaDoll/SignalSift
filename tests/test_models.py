@@ -5,7 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from signalsift.models import ConfigError, NormalizedItem, load_filter_config, load_sources_config
+from signalsift.models import (
+    ConfigError,
+    NormalizedItem,
+    load_filter_config,
+    load_profile_sources_config,
+    load_sources_config,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,11 +24,24 @@ def write_yaml(tmp_path: Path, text: str) -> Path:
 
 
 def test_loads_repository_configuration() -> None:
-    sources = load_sources_config(ROOT / "config/sources.yaml")
-    security = load_filter_config(ROOT / "config/supply_chain_vulnerability.yaml")
-    ai_security = load_filter_config(ROOT / "config/ai_security.yaml")
+    sources, _ = load_profile_sources_config(ROOT / "config/supply_chain_sources.yaml")
+    _, security = load_profile_sources_config(ROOT / "config/supply_chain_sources.yaml")
+    ai_sources, ai_security = load_profile_sources_config(ROOT / "config/ai_security.yaml")
 
     assert len(sources.enabled_sources) == 8
+    assert len(ai_sources.enabled_sources) == 11
+    assert "cisa_kev" not in {source.id for source in ai_sources.enabled_sources}
+    assert {
+        source.id
+        for source in ai_sources.enabled_sources
+    } >= {
+        "ai_incident_database",
+        "huntr",
+        "lakera",
+        "microsoft_ai_red_team",
+        "hiddenlayer",
+        "adversa_ai",
+    }
     assert sources.enabled_sources[1].adapter == "cisa_kev"
     assert sources.enabled_sources[2].adapter == "flatt_blog"
     github = next(
@@ -132,23 +151,23 @@ def test_rejects_duplicate_yaml_keys(tmp_path: Path) -> None:
 
 
 def test_rejects_invalid_notification_boundary(tmp_path: Path) -> None:
-    text = (ROOT / "config/supply_chain_vulnerability.yaml").read_text(encoding="utf-8")
+    text = (ROOT / "config/supply_chain_sources.yaml").read_text(encoding="utf-8")
     path = write_yaml(tmp_path, text.replace("threshold: 7", "threshold: 0", 1))
 
     with pytest.raises(ConfigError, match="notification.threshold: must be >= 1"):
-        load_filter_config(path)
+        load_profile_sources_config(path)
 
 
 def test_rejects_non_positive_summary_match_limit(tmp_path: Path) -> None:
-    text = (ROOT / "config/sources.yaml").read_text(encoding="utf-8")
+    text = (ROOT / "config/supply_chain_sources.yaml").read_text(encoding="utf-8")
     path = write_yaml(tmp_path, text.replace("match_summary_chars: 500", "match_summary_chars: 0"))
 
     with pytest.raises(ConfigError, match="match_summary_chars: must be >= 1"):
-        load_sources_config(path)
+        load_profile_sources_config(path)
 
 
 def test_rejects_rule_with_any_and_all_groups(tmp_path: Path) -> None:
-    text = (ROOT / "config/supply_chain_vulnerability.yaml").read_text(encoding="utf-8")
+    text = (ROOT / "config/supply_chain_sources.yaml").read_text(encoding="utf-8")
     text = text.replace(
         "    any:\n      - CVE",
         "    any:\n      - CVE\n    all_groups:\n      - any:\n          - compromise",
@@ -157,7 +176,7 @@ def test_rejects_rule_with_any_and_all_groups(tmp_path: Path) -> None:
     path = write_yaml(tmp_path, text)
 
     with pytest.raises(ConfigError, match="exactly one of 'any' or 'all_groups'"):
-        load_filter_config(path)
+        load_profile_sources_config(path)
 
 
 def test_normalized_item_converts_naive_datetime_to_utc() -> None:

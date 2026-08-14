@@ -41,6 +41,10 @@ permissions:
 
 現在、誤通知を避けるため定期実行cronはコメントアウトされています。
 
+Webhookを設定する前にActionsと両Profileの取得・state重複排除だけを確認する場合は、**Run workflow** で `simulate_delivery` を有効にします。各Profileを同じ一時stateで2回実行し、Slack送信と`state`ブランチへのpushは行いません。ログで1回目の`simulated_delivery=true`と、2回目の`duplicates`を確認してください。
+
+実配信を確認する場合は、Repository secretsを設定してから `simulate_delivery` を無効にして手動実行します。
+
 1. **Actions → SignalSift Profiles** を開く
 2. **Run workflow** を選択
 3. `main`を対象に実行する
@@ -134,9 +138,10 @@ stateを復旧できない場合は、別名でバックアップしたうえで
 
 ## 9. ローカル実行
 
-PCでのデバッグは`uv`を使います。
+PCでのデバッグと運用前検証は`uv`を使います。ローカル検証ではGitHub Actionsの`state`ブランチを直接使わず、`.local/state`を使用してください。
 
 ```bash
+cd /home/calvet/git/SignalSift
 uv sync --locked
 uv run --locked pytest
 uv run --locked signalsift run \
@@ -155,6 +160,106 @@ uv run --locked signalsift run \
 ```
 
 `.venv`、`.local`、`.env`、Webhook URLはGitへ追加しないでください。
+
+### 9.1 Webhookなしでstateと重複排除を検証
+
+`--simulate-delivery`はSlackを呼ばず、採用記事をローカルstateへシミュレーション成功として保存します。誤って本番stateを更新しないよう、`--state-path`は`.local/`配下に限定されます。
+
+```bash
+mkdir -p .local/state .local/reviews
+
+uv run --locked signalsift run \
+  --profile ai-security \
+  --simulate-delivery \
+  --state-path .local/state/ai_security.json \
+  | tee .local/reviews/ai-security-simulated-first.log
+
+uv run --locked signalsift run \
+  --profile ai-security \
+  --simulate-delivery \
+  --state-path .local/state/ai_security.json \
+  | tee .local/reviews/ai-security-simulated-second.log
+```
+
+2回目に既記録記事が通知候補へ戻らないことを確認します。このstateはSlackへの実送信を証明しないため、本番の通知台帳へコピーしないでください。通常の`--dry-run`は従来どおりstateを変更しません。
+
+### 9.2 7日間のdry-runレビュー
+
+dry-runはSlack送信とstate変更を行いません。`--review-lookback-hours`を指定すると通知履歴を一時的に無視し、過去記事を再評価できます。
+
+```bash
+mkdir -p .local/reviews .local/state
+
+uv run --locked signalsift run \
+  --profile supply-chain-vulnerability \
+  --dry-run \
+  --review-lookback-hours 168 \
+  --state-path .local/state/supply_chain_vulnerability.json \
+  | tee ".local/reviews/supply-chain-$(date -u +%Y%m%dT%H%M%SZ).log"
+
+uv run --locked signalsift run \
+  --profile ai-security \
+  --dry-run \
+  --review-lookback-hours 168 \
+  --state-path .local/state/ai_security.json \
+  | tee ".local/reviews/ai-$(date -u +%Y%m%dT%H%M%SZ).log"
+```
+
+候補ごとに`title`、`source`、`score`、`why`、URLを確認し、誤検知・見逃し候補をログと別のレビュー記録へ残します。
+
+### 9.3 日次観測
+
+数日間の頻度を測る場合は、毎日1回、直近24時間を再評価します。
+
+```bash
+uv run --locked signalsift run \
+  --profile supply-chain-vulnerability \
+  --dry-run \
+  --review-lookback-hours 24 \
+  --state-path .local/state/supply_chain_vulnerability.json \
+  | tee ".local/reviews/supply-chain-$(date -u +%Y%m%d).log"
+```
+
+AI Securityも同じコマンドの`--profile`とstate pathを置き換えて実行します。日ごとに次を記録します。
+
+- `matched`と`notifications`の件数
+- 情報源ごとの候補数
+- 誤検知・見逃し候補
+- Feed取得失敗
+- 同一記事の再出現
+
+`--review-lookback-hours`付き実行はレビュー専用で、同じ記事が複数日に表示されることがあります。本番の重複排除確認には、次のテストSlack実送信を使います。
+
+### 9.4 テストSlackへの実送信
+
+dry-runの内容を確認した後、テスト用SlackチャンネルのWebhookを環境変数へ設定します。本番チャンネルのWebhookは使わないでください。
+
+```bash
+export SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY='テスト用Webhook URL'
+export SLACK_WEBHOOK_URL_AI_SECURITY='テスト用Webhook URL'
+
+uv run --locked signalsift run \
+  --profile supply-chain-vulnerability \
+  --state-path .local/state/supply_chain_vulnerability.json \
+  | tee .local/reviews/live-supply-chain.log
+```
+
+AI Securityは`--profile ai-security`と`.local/state/ai_security.json`へ置き換えます。実送信ではSlack成功記事だけがstateへ保存され、同じコマンドを再実行しても同じ記事は再通知されません。
+
+### 9.5 ローカル検証後の確認と後片付け
+
+実送信後に以下を確認します。
+
+```bash
+uv run --locked signalsift run \
+  --profile supply-chain-vulnerability \
+  --dry-run \
+  --state-path .local/state/supply_chain_vulnerability.json
+
+git status --short
+```
+
+2回目のdry-runで既通知記事が候補に戻らないこと、Webhook URLや記事本文全文がログに出ていないことを確認します。検証終了後はWebhookをSlack側で失効・ローテーションし、`.local/reviews`と`.local/state`を必要に応じて安全に保管または削除してください。これらはGitへcommitしません。
 
 ## 10. 停止・再開
 

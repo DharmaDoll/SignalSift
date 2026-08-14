@@ -28,7 +28,8 @@
 - [x] source、profile、notification、rule、任意boost/watch termの型付き設定モデルを作る。
 - [x] 必須値、型、未知field、HTTPS URL、priority、source ID重複、adapter名を検証する。
 - [x] `NormalizedItem`、評価結果、source別集計モデルを実装する。
-- [x] 現行3設定ファイルの正常系と代表的な設定不正をテストする。
+- [x] 現行Profile設定の正常系と代表的な設定不正をテストする。
+- [x] 各Profileのフィルタと情報源を同一ファイルへ統合し、Profileごとに独立して読み込む。
 - [x] `uv run --locked signalsift run --help` と `uv run --locked pytest` がclean環境で動くことを確認する。
 
 ## 2. 制限付きHTTPと汎用Feed取得

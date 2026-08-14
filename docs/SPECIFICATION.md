@@ -93,8 +93,7 @@ GitHub Actions
       ▼
 signalsift run
       │
-      ├── config/sources.yaml
-      ├── config/supply_chain_vulnerability.yaml
+      ├── config/supply_chain_sources.yaml
       ├── config/ai_security.yaml
       └── state branch: state/{supply_chain_vulnerability,ai_security}.json
       │
@@ -129,7 +128,7 @@ Coreの共通モデルにCVE専用必須フィールドなどのセキュリテ�
 MVPが公開するコマンドは次の1つとする。
 
 ```bash
-signalsift run [--profile supply-chain-vulnerability|ai-security] [--dry-run] [--state-path PATH] [--review-lookback-hours HOURS]
+signalsift run [--profile supply-chain-vulnerability|ai-security] [--dry-run|--simulate-delivery] [--state-path PATH] [--review-lookback-hours HOURS]
 ```
 
 コマンドは1回の処理サイクルを実行して終了する。待機、ループ、スケジューリングは行わない。
@@ -137,8 +136,7 @@ signalsift run [--profile supply-chain-vulnerability|ai-security] [--dry-run] [-
 設定ファイルの既定位置は以下とする。
 
 ```text
-config/sources.yaml
-config/supply_chain_vulnerability.yaml
+config/supply_chain_sources.yaml
 config/ai_security.yaml
 ```
 
@@ -154,6 +152,8 @@ GitHub Actionsは `state` ブランチの内容を上記パスへ準備してか
 `--profile` の既定値は `supply-chain-vulnerability` とする。`--state-path` は選択Profileの状態ファイルを上書きする。ローカルでは `.local/state/supply_chain_vulnerability.json` と `.local/state/ai_security.json` のように分離する。
 
 `--dry-run` は取得、正規化、フィルター、score、重複判定、通知本文生成までを実行するが、Slackへ送信せず、状態ファイルも作成・変更しない。Webhook URLは不要とし、採用候補のtitle、source、score、`why_matched`、通知予定形式を安全なプレーンテキストで標準出力へ表示する。通常実行では選択ProfileのWebhookへ送信し、Slack成功記事だけを状態へ追加する。取得・解析等の障害や送信失敗の終了コードは通常実行と同じとする。
+
+`--simulate-delivery` はローカルでstate更新と重複排除を検証するための明示的なテストモードとする。SlackとWebhookを使用せず、採用記事をシミュレーション成功としてstateへ追加する。`--state-path`は`.local/`配下を必須とし、`--dry-run`および`--review-lookback-hours`とは併用不可とする。生成されたstateはSlack送信成功を示さず、本番stateへ転用してはならない。
 
 `--review-lookback-hours HOURS` は正の整数とし、`--dry-run` とだけ併用できる精度調整用オプションとする。指定時は保存済みの `initial_cutoff_at` と通知履歴を一時的に無視し、実行時刻から指定時間を遡った記事を再評価する。本番設定の24時間、状態ファイル、Slackには影響を与えない。通常の `--dry-run` は保存済みcutoffと通知履歴を尊重する。
 
@@ -206,9 +206,9 @@ MVPではLLM用APIキーや外部DB接続情報を要求しない。
 - YAMLにCSSセレクター、XPath、JSONPath、変換用正規表現列などの解析DSLを追加しない。
 - 設定は運用者が変更する値を表し、解析手順はコードに置く。
 
-### 7.2 `config/sources.yaml`
+### 7.2 `config/supply_chain_sources.yaml`
 
-トップレベルは `sources` の配列とする。
+`config/supply_chain_sources.yaml`はProfile設定と`sources`配列を同じトップレベルに持つ。各source項目は次のフィールドを持つ。
 
 | フィールド | 型 | 必須 | 制約・意味 |
 |---|---|---:|---|
@@ -258,7 +258,7 @@ MVPでは、アダプターなしの汎用JSONまたはHTMLスキーマは定義
 
 ### 7.3 Profile設定
 
-`config/supply_chain_vulnerability.yaml` と `config/ai_security.yaml` は同じ小さなschemaを用いる。設定、Webhook環境変数、stateを分離し、一方の通知履歴や配信障害がもう一方の履歴へ混入しない。
+`config/supply_chain_sources.yaml`と`config/ai_security.yaml`は、それぞれのProfileのfilterと情報源を同じファイルで管理する。情報源集合もProfileごとに独立しており、一方の設定変更は他方へ影響しない。Webhook環境変数とstateもProfileごとに分離する。
 
 トップレベル項目は以下とする。
 
@@ -301,7 +301,7 @@ MVPでは、アダプターなしの汎用JSONまたはHTMLスキーマは定義
 | フィールド | 型 | 必須 | 意味 |
 |---|---|---:|---|
 | `id` | string/null | はい | feed GUID、entry ID等。安定IDがなければ `null` |
-| `source_id` | string | はい | `sources.yaml` のID |
+| `source_id` | string | はい | `supply_chain_sources.yaml` のID |
 | `title` | string | はい | 表示用タイトル。空文字不可 |
 | `url` | string/null | はい | 原記事URL。取得できなければ `null` |
 | `published_at` | datetime/null | はい | UTCへ正規化したタイムゾーン付き日時 |
@@ -509,10 +509,8 @@ AI Security Profileは一般AI記事を避けるため、2群のANDだけを残�
 
 ```text
 AI文脈:
-LLM | AI agent | AI agents | agentic | MCP | Model Context Protocol |
-Skills | Claude Code | Codex | RAG | AI vulnerability | AI vulnerabilities |
-AI security | AI exploit | AI exploits | AI model | AI models |
-AI脆弱性 | AIセキュリティ | AIシステム | AIエージェント | 生成AI
+LLM | agentic | MCP | Model Context Protocol | Skills | Claude Code |
+Codex | RAG | redteam | red team | prompt injection
 
 security文脈:
 CVE | CVEs | vulnerability | vulnerabilities | attack | exploit | injection |
@@ -682,6 +680,8 @@ pruneだけで状態が変わった場合も永続化対象とする。
 ### 14.5 Git永続化
 
 - `state` ブランチには2つのProfile stateだけを置く。
+
+HTML一覧sourceで公開日時を取得できない場合、初回のlive実行では現在表示されている記事キーを`observed`へbaselineとして保存し、通知しない。次回以降に初めて観測された記事だけを評価する。`items`は引き続きSlack成功後だけ更新し、通知失敗時の再試行保証を維持する。
 - ファイル内容に実質的な変更がある場合だけcommit・pushする。
 - `main` ブランチへ実行時状態をcommitしない。
 - GitHub Actionsの単一concurrency group `signalsift-state` で同時更新を防ぐ。
@@ -987,7 +987,6 @@ LLMを追加する場合もfeature flagで無効化可能とし、決定論的�
 
 - `AGENTS.md`: プロジェクト原則と実装制約
 - `README.md`: プロダクト概要と運用モデル
-- `config/sources.yaml`: 2Profileで共有する情報源
-- `config/supply_chain_vulnerability.yaml`: supply-chain・脆弱性Profileの選定と配信設定
+- `config/supply_chain_sources.yaml`: Supply Chain Vulnerabilityのfilterと全情報源
 - `config/ai_security.yaml`: AI/LLM/Agent/MCP/Skills security Profileの選定と配信設定
 - `plan.md`: 仕様を実装するための進捗チェックリスト

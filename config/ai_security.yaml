@@ -31,8 +31,6 @@ rules:
     all_groups:
       - any:
           - LLM
-          - AI agent
-          - AI agents
           - agentic
           - MCP
           - Model Context Protocol
@@ -40,18 +38,9 @@ rules:
           - Claude Code
           - Codex
           - RAG
-          - AI vulnerability
-          - AI vulnerabilities
-          - AI security
-          - AI exploit
-          - AI exploits
-          - AI model
-          - AI models
-          - "AI脆弱性"
-          - "AIセキュリティ"
-          - "AIシステム"
-          - "AIエージェント"
-          - "生成AI"
+          - redteam
+          - red team
+          - prompt injection
 
       - any:
           - CVE
@@ -68,11 +57,165 @@ rules:
           - unauthenticated
           - command execution
           - malicious
-          - "脆弱性"
           - "攻撃"
           - "窃取"
+
+  ai_incident_database:
+    score: 5
+    source_ids:
+      - ai_incident_database
+    all_groups:
+      - any:
+          - LLM
+          - agentic
+          - MCP
+          - Model Context Protocol
+          - AI incident
+          - AI incidents
+          - Claude
+          - model
+      - any:
+          - incident
+          - incidents
+          - breach
+          - breached
+          - misuse
+          - harm
+          - malicious
+          - attack
+          - exploit
+          - vulnerability
 
 source_priority_score:
   1: 1
   2: 2
   3: 3
+
+# AI Security owns its source set independently from Supply Chain.
+sources:
+  - id: jpcert
+    name: JPCERT/CC
+    enabled: true
+    type: rss
+    url: https://www.jpcert.or.jp/rss/jpcert.rdf
+    priority: 3
+    notes: Japanese operational alerts and curated security information.
+
+  - id: flatt
+    name: GMO Flatt Security
+    enabled: true
+    type: html
+    url: https://blog.flatt.tech/
+    adapter: flatt_blog
+    priority: 3
+    source_filter:
+      exclude:
+        - "社員インタビュー"
+        - "採用情報"
+        - "サービス紹介"
+    notes: Top-page excerpts avoid full-article noise in the RSS description.
+
+  - id: wiz
+    name: Wiz
+    enabled: true
+    type: rss
+    url: https://www.wiz.io/feed/rss.xml
+    priority: 3
+    source_filter:
+      exclude:
+        - webinar
+        - customer story
+    notes: Cloud, vulnerability, supply-chain, AI and MCP research.
+
+  - id: google_threat_intel
+    name: Google Threat Intelligence / Mandiant
+    enabled: true
+    type: rss
+    url: https://feeds.feedburner.com/threatintelligence/pvexyqv7v0v
+    priority: 3
+    match_content: false
+    match_summary_chars: 500
+    notes: Major campaigns, exploitation and AI-enabled threat research. Match only the title and first 500 summary characters because the feed description contains the full article.
+
+  - id: github_ai_and_ml_blog
+    name: GitHub AI&ML Blog
+    enabled: true
+    type: rss
+    url: https://github.blog/ai-and-ml/feed/
+    priority: 3
+    match_content: false
+    notes: GitHub engineers and industry thought leaders offer practical AI and ML explainers.
+
+  - id: ai_incident_database
+    name: AI Incident Database (AIID)
+    enabled: true
+    type: rss
+    url: https://incidentdatabase.ai/rss.xml
+    priority: 3
+    notes: Database of real-world AI incidents, harms, and security-relevant failures.
+
+  - id: huntr
+    name: Protect AI / Huntr
+    enabled: true
+    type: html
+    url: https://blog.huntr.com/
+    adapter: huntr_blog
+    priority: 3
+    notes: AI/ML open-source vulnerability disclosures and bug-bounty research.
+
+  - id: lakera
+    name: Lakera AI Research
+    enabled: true
+    type: html
+    url: https://www.lakera.ai/blog
+    adapter: lakera_blog
+    priority: 3
+    notes: Prompt injection, agent security, and LLM defense research.
+
+  - id: microsoft_ai_red_team
+    name: Microsoft AI Red Team
+    enabled: true
+    type: rss
+    url: https://www.microsoft.com/en-us/security/blog/feed/
+    priority: 3
+    source_filter:
+      include_any:
+        - AI security
+        - AI red team
+        - AI attack
+        - AI vulnerability
+        - LLM security
+        - prompt injection
+        - agent security
+        - agentic security
+      exclude:
+        - leader
+        - leadership compass
+        - what's new
+        - product announcement
+        - platform update
+        - customer story
+    notes: Microsoft Security research with an AI red-teaming and AI security source filter.
+
+  - id: hiddenlayer
+    name: HiddenLayer Research
+    enabled: true
+    type: html
+    url: https://www.hiddenlayer.com/innovation-hub/research
+    adapter: hiddenlayer_research
+    priority: 2
+    notes: Adversarial ML, model poisoning, and machine-learning model protection research.
+
+  - id: adversa_ai
+    name: Adversa AI Research
+    enabled: true
+    type: rss
+    url: https://adversa.ai/feed/
+    priority: 2
+    source_filter:
+      exclude:
+        - resource
+        - resources
+        - roundup
+        - monthly
+    notes: LLM jailbreak and AI red-team research.

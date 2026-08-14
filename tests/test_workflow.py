@@ -17,6 +17,26 @@ def test_workflow_keeps_schedule_disabled_until_operations_enable_it() -> None:
     assert "  workflow_dispatch:" in text
 
 
+def test_workflow_dispatch_can_simulate_state_without_slack() -> None:
+    document = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    dispatch = document[True]["workflow_dispatch"]
+    simulation = document["jobs"]["collect"]["steps"][4]
+    live = document["jobs"]["collect"]["steps"][5]
+
+    assert dispatch["inputs"]["simulate_delivery"] == {
+        "description": "Test both profiles without Slack or persistent state",
+        "required": True,
+        "default": True,
+        "type": "boolean",
+    }
+    assert simulation["name"] == "Simulate collector without Slack"
+    assert "--simulate-delivery" in simulation["run"]
+    assert "for pass in first second" in simulation["run"]
+    assert "SLACK_WEBHOOK" not in simulation["run"]
+    assert live["name"] == "Run collector"
+    assert "inputs.simulate_delivery != true" in live["if"]
+
+
 def test_workflow_does_not_put_github_token_in_remote_url() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
 

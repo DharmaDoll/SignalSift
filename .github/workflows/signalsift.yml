@@ -6,6 +6,12 @@ on:
   #   - cron: "17,47 * * * *"
 
   workflow_dispatch:
+    inputs:
+      simulate_delivery:
+        description: Test both profiles without Slack or persistent state
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -37,7 +43,25 @@ jobs:
       - name: Test
         run: uv run --locked pytest
 
+      - name: Simulate collector without Slack
+        if: github.event_name == 'workflow_dispatch' && inputs.simulate_delivery == true
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p .local/state
+          for profile in supply-chain-vulnerability ai-security; do
+            state_name="${profile//-/_}"
+            for pass in first second; do
+              echo "simulation profile=${profile} pass=${pass}"
+              uv run --locked signalsift run \
+                --profile "$profile" \
+                --simulate-delivery \
+                --state-path ".local/state/${state_name}.json"
+            done
+          done
+
       - name: Run collector
+        if: github.event_name != 'workflow_dispatch' || inputs.simulate_delivery != true
         env:
           SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY: ${{ secrets.SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY }}
           SLACK_WEBHOOK_URL_AI_SECURITY: ${{ secrets.SLACK_WEBHOOK_URL_AI_SECURITY }}

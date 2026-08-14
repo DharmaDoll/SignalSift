@@ -101,6 +101,14 @@ uv run --locked signalsift run --profile supply-chain-vulnerability --dry-run --
 
 Dry-run fetches and evaluates items but does not call Slack or modify notification state. The optional `--review-lookback-hours` mode ignores notification history in memory and prints both selected and rejected recent items for filter review. It does not change the production `initial_lookback_hours: 24` policy.
 
+To exercise local state and deduplication without a Slack webhook, use the explicitly local-only simulated delivery mode. It records matched items as simulated successes, never calls Slack, and requires a state path under `.local/`:
+
+```bash
+uv run --locked signalsift run --profile ai-security --simulate-delivery --state-path .local/state/ai_security.json
+```
+
+Run the same command twice to verify that the second run suppresses previously recorded articles. Never reuse simulated state as the production notification ledger.
+
 Live Slack delivery is available as a run-once CLI path. It uses a Profile-specific webhook and a local state path, kept separate from the GitHub Actions ledger:
 
 ```bash
@@ -114,21 +122,21 @@ Do not commit `.venv`, `.local`, `.env`, or webhook values. Local execution rema
 
 ## Profile configuration
 
-Sources are shared while filtering, webhook selection, and notification history are separable:
+Each Profile owns its source set, filter, webhook selection, and notification history:
 
 ```text
-config/sources.yaml
-config/supply_chain_vulnerability.yaml
+config/supply_chain_sources.yaml
 config/ai_security.yaml
 ```
 
-The two profiles use independent state files and can deliver to independent Slack webhooks.
+The two files are intentionally independent. Changing the Supply Chain source list does not change AI Security, and vice versa.
 
 運用開始手順、Secret設定、初回実行、cron有効化、障害対応は[docs/OPERATIONS.md](docs/OPERATIONS.md)を参照してください。
+実PCでの`uv`、dry-run、日次観測、テストSlack送信の手順も同文書にまとめています。
 
-### `sources.yaml`
+### `supply_chain_sources.yaml`
 
-Defines:
+Defines the Supply Chain Vulnerability profile and its complete source set:
 
 - enabled source
 - fetch URL
@@ -136,32 +144,25 @@ Defines:
 - source priority
 - whether full feed content participates in matching
 - optional summary-character limit used only for matching
-- small source-specific noise filters shared by both profiles
+- small source-specific noise filters for this profile
 
-Flatt, Wiz, StepSecurity, and Aikido currently have only obvious publication-specific exclusions. Topic selection remains in the two profile files so an AI Security candidate is not removed by Supply Chain Vulnerability policy.
+Flatt, Wiz, StepSecurity, and Aikido currently have only obvious publication-specific exclusions. Topic selection and source membership are controlled independently in each profile file.
 
 GitHub Security Blog uses its official RSS feed with `match_content: false`; its title, short excerpt, categories, and external IDs are evaluated while the long feed body is excluded from matching.
 
 Google Threat Intelligence also excludes `content` and evaluates only the first 500 summary characters. Its RSS description contains the full article, so this keeps lead context while avoiding incidental matches deep in the body.
 
-### `supply_chain_vulnerability.yaml`
-
-Defines:
-
-- one short OR list for supply-chain and vulnerability signals
-- `SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY`
-- CISA KEV force-notification policy
-
 ### `ai_security.yaml`
 
 Defines:
 
+- its own enabled source set and source-specific noise filters
 - one short AI-context OR group
 - one short security-context OR group
 - AND between those two groups
 - `SLACK_WEBHOOK_URL_AI_SECURITY`
 
-The configuration stays flat because both profiles share the same curated sources; a nested profile framework is unnecessary.
+The configuration stays flat because each profile owns its own curated sources; a nested profile framework is unnecessary.
 
 ## Source compatibility
 
@@ -177,7 +178,7 @@ source-specific adapter
 HTML scraping
 ```
 
-Most normal blogs should require only a `sources.yaml` change.
+Source changes belong in the configuration file for the Profile being changed.
 
 Special structured sources such as CISA KEV may use a small adapter. Flatt uses a source-specific adapter for its blog index because its RSS descriptions contain full articles and package lists that reduce filtering precision; the adapter reads only index-card metadata and does not crawl article pages.
 
@@ -186,6 +187,8 @@ Special structured sources such as CISA KEV may use a small adapter. Flatt uses 
 Once an article has successfully been sent to Slack, it should not be sent again.
 
 Notification state is stored on a dedicated Git branch:
+
+For HTML index sources whose cards do not expose a publication timestamp, the first live run records the currently visible article keys under `observed` as a baseline without notifying them. Later runs consider only newly observed cards; notification records remain under `items` and are written only after Slack succeeds.
 
 ```text
 state
@@ -214,7 +217,7 @@ Only recent items inside `initial_lookback_hours` are eligible.
 
 ## Source expansion
 
-Additional security sources are intentionally left **commented out** in `config/sources.yaml`.
+Additional security sources are intentionally left **commented out** in `config/supply_chain_sources.yaml`.
 
 Before enabling another source, answer:
 

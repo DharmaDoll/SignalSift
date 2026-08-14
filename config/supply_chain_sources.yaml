@@ -1,16 +1,132 @@
-# SignalSift — shared source configuration
+# SignalSift — Supply Chain Vulnerability profile and source set
 #
-# Policy:
-# - This file is shared by the Supply Chain Vulnerability and AI Security profiles.
-# - SignalSift core is generic; these sources are intentionally security-specific.
-# - Keep the active source set intentionally small.
-# - Prefer RSS / Atom / RDF.
-# - Use source-specific adapters only where generic parsing is insufficient.
-# - Candidate sources remain commented out until a real coverage gap is identified.
-# - Do not enable a source simply because it publishes security content.
+# This file intentionally owns both the profile filter and the current source
+# set. Future topic profiles may define their own source-set file.
+
+profile:
+  id: supply_chain_vulnerability
+  webhook_env: SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY
+  force_notify_source_ids:
+    - cisa_kev
+
+notification:
+  threshold: 7
+  initial_lookback_hours: 24
+  state_retention_days: 180
+  max_individual_messages_per_run: 5
+
+negative_terms:
+  score: -5
+  terms:
+    - webinar
+    - customer story
+    - "ウェビナー"
+    - "導入事例"
+  mild:
+    score: -3
+    terms:
+      - product announcement
+      - release notes
+
+rules:
+  supply_chain_vulnerability:
+    score: 5
+    exclude_source_ids:
+      - jpcert
+    any:
+      - CVE
+      - CVEs
+      - vulnerability
+      - vulnerabilities
+      - "脆弱性"
+      - zero-day
+      - 0-day
+      - RCE
+      - bypass
+      - supply chain
+      - compromise
+      - malicious
+      - typosquatting
+      - dependency
+      - npm
+      - yarn
+      - pnpm
+      - PyPI
+      - pip
+      - conda
+      - Poetry
+      - package
+      - crates.io
+      - Maven
+      - Maven Central
+      - Gradle
+      - NuGet
+      - RubyGems
+      - Bundler
+      - Composer
+      - Packagist
+      - Go modules
+      - Cargo
+      - Hex
+      - pub.dev
+      - CPAN
+      - CocoaPods
+      - SwiftPM
+      - Swift Package Manager
+      - LuaRocks
+      - Hackage
+      - Cabal
+      - opam
+      - Conan
+      - vcpkg
+      - GitHub Actions
+      - "サプライチェーン"
+      - "パッケージ"
+      - "悪用"
+      - "ゼロデイ"
+      - "認証回避"
+      - "認証不要"
+      - "リモートコード実行"
+      - "バイパス"
+
+  supply_chain_vulnerability_jpcert:
+    score: 5
+    source_ids:
+      - jpcert
+    any:
+      - zero-day
+      - 0-day
+      - RCE
+      - bypass
+      - supply chain
+      - compromise
+      - malicious
+      - typosquatting
+      - dependency
+      - npm
+      - yarn
+      - pnpm
+      - PyPI
+      - pip
+      - package
+      - crates.io
+      - RubyGems
+      - Cargo
+      - GitHub Actions
+      - "サプライチェーン"
+      - "悪用"
+      - "ゼロデイ"
+      - "認証回避"
+      - "認証不要"
+      - "リモートコード実行"
+      - "バイパス"
+
+source_priority_score:
+  1: 1
+  2: 2
+  3: 3
 
 sources:
-
   - id: jpcert
     name: JPCERT/CC
     enabled: true
@@ -35,13 +151,11 @@ sources:
     url: https://blog.flatt.tech/
     adapter: flatt_blog
     priority: 3
-
     source_filter:
       exclude:
         - "社員インタビュー"
         - "採用情報"
         - "サービス紹介"
-
     notes: Top-page excerpts avoid full-article noise in the RSS description.
 
   - id: wiz
@@ -50,12 +164,13 @@ sources:
     type: rss
     url: https://www.wiz.io/feed/rss.xml
     priority: 3
-
     source_filter:
       exclude:
         - webinar
         - customer story
-
+        - BOD 26-04
+        - Verizon DBIR
+        - AI vulnerability researcher
     notes: Cloud, vulnerability, supply-chain, AI and MCP research.
 
   - id: stepsecurity
@@ -64,13 +179,14 @@ sources:
     type: rss
     url: https://www.stepsecurity.io/blog/rss.xml
     priority: 3
-
     source_filter:
       exclude:
         - webinar
         - customer story
         - mid-year update
-
+        - control which package registries
+        - find unused, stale
+        - runtime security for third-party
     notes: High-value source for active software supply-chain incidents.
 
   - id: aikido
@@ -79,7 +195,6 @@ sources:
     type: rss
     url: https://www.aikido.dev/blog/rss.xml
     priority: 2
-
     source_filter:
       exclude:
         - customer story
@@ -89,7 +204,9 @@ sources:
         - alternatives
         - DevSec Tools & Comparisons
         - Product & Company Updates
-
+        - benchmarking 13 AI models
+        - upgrade trap
+        - "Einstein of cybersecurity"
     notes: OSS malware, package compromise and vulnerability research.
 
   - id: google_threat_intel
@@ -100,6 +217,12 @@ sources:
     priority: 3
     match_content: false
     match_summary_chars: 500
+    source_filter:
+      exclude:
+        - residential proxy
+        - intelligence gathering apparatus
+        - cloud functions
+        - AI-assisted vulnerability management
     notes: Major campaigns, exploitation and AI-enabled threat research. Match only the title and first 500 summary characters because the feed description contains the full article.
 
   - id: github_security_blog
@@ -109,21 +232,14 @@ sources:
     url: https://github.blog/security/feed/
     priority: 3
     match_content: false
+    source_filter:
+      exclude:
+        - Tame Dependabot
+        - security settings every GitHub maintainer
+        - Advisory Database
     notes: Official supply-chain, vulnerability, GitHub Actions, and Security Lab information. Match only title, excerpt, categories, and external IDs to avoid full-article noise.
 
-
-  # ---------------------------------------------------------------------------
-  # Candidate sources
-  #
-  # Keep these commented out until their additional coverage is justified.
-  # When enabling one:
-  #   1. identify the coverage gap,
-  #   2. estimate overlap with active sources,
-  #   3. add local fixtures,
-  #   4. tune source/global filters,
-  #   5. observe Slack volume.
-  # ---------------------------------------------------------------------------
-
+  # Candidate sources remain commented out until an observed coverage gap justifies them.
   # - id: github_advisories
   #   name: GitHub Global Security Advisories
   #   enabled: true
@@ -132,23 +248,20 @@ sources:
   #   adapter: github_advisories
   #   priority: 2
   #   notes: Enable only after defining ecosystem/product constraints.
-
   # - id: socket
   #   name: Socket Research
   #   enabled: true
   #   type: rss
   #   url: https://socket.dev/blog
   #   priority: 2
-  #   notes: Strong package-malware research. Potential overlap with StepSecurity/Aikido. Verify feed endpoint before enabling.
-
+  #   notes: Verify feed endpoint before enabling.
   # - id: jvn
   #   name: JVN / JVN iPedia
   #   enabled: true
   #   type: rss
   #   url: https://jvndb.jvn.jp/ja/feed/
   #   priority: 2
-  #   notes: Better when combined with watched products; broad use may be noisy.
-
+  #   notes: Broad use may be noisy.
   # - id: openssf_malicious_packages
   #   name: OpenSSF malicious-packages
   #   enabled: true
@@ -156,8 +269,7 @@ sources:
   #   url: https://github.com/ossf/malicious-packages
   #   adapter: openssf_malicious_packages
   #   priority: 2
-  #   notes: Prefer enrichment / validation over direct Slack notification.
-
+  #   notes: Prefer enrichment over direct notification.
   # - id: nvd
   #   name: NVD
   #   enabled: true
@@ -165,28 +277,25 @@ sources:
   #   url: https://services.nvd.nist.gov/rest/json/cves/2.0
   #   adapter: nvd
   #   priority: 1
-  #   notes: Prefer lookup/enrichment rather than primary notification source.
-
+  #   notes: Prefer lookup/enrichment rather than notification.
   # - id: cisa_alerts
   #   name: CISA Cybersecurity Alerts & Advisories
   #   enabled: true
   #   type: rss
   #   url: https://www.cisa.gov/news-events/cybersecurity-advisories
   #   priority: 2
-  #   notes: Potentially useful, but may overlap KEV and GTI. Verify feed/API endpoint before enabling.
-
+  #   notes: Verify feed/API endpoint before enabling.
   # - id: unit42
   #   name: Palo Alto Unit 42
   #   enabled: true
   #   type: rss
   #   url: https://unit42.paloaltonetworks.com/
   #   priority: 2
-  #   notes: Strong incident/threat research. Enable only if broader threat-campaign coverage is desired.
-
+  #   notes: Enable only if broader campaign coverage is desired.
   # - id: project_zero
   #   name: Google Project Zero
   #   enabled: true
   #   type: rss
   #   url: https://googleprojectzero.blogspot.com/
   #   priority: 2
-  #   notes: High-quality vulnerability research but lower event frequency; useful if deep exploit research is desired.
+  #   notes: Useful if deep exploit research is desired.

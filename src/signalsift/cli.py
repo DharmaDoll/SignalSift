@@ -9,7 +9,7 @@ from io import TextIOBase
 from pathlib import Path
 
 from signalsift.adapters import fetch_source
-from signalsift.dedupe import deduplicate_results
+from signalsift.dedupe import article_key, deduplicate_results
 from signalsift.fetch import FetchError
 from signalsift.filter import evaluate_item, passes_source_filter
 from signalsift.models import (
@@ -20,21 +20,22 @@ from signalsift.models import (
     SourceConfig,
     SourcesConfig,
     SourceRunStats,
-    load_filter_config,
-    load_sources_config,
+    load_profile_sources_config,
 )
 from signalsift.slack import (
+    SlackDeliveryReport,
+    SlackError,
     build_notification_batches,
     build_source_failure_alert,
     send_notification_batches,
     send_operational_alert,
-    SlackError,
 )
 from signalsift.state import (
     NotificationState,
     StateError,
     is_eligible_item,
     load_state,
+    mark_observed,
     mark_notified,
     prune_state,
     save_state,
@@ -43,7 +44,7 @@ from signalsift.state import (
 
 Fetcher = Callable[[SourceConfig], tuple[NormalizedItem, ...]]
 PROFILE_CONFIG_PATHS = {
-    "supply-chain-vulnerability": Path("config/supply_chain_vulnerability.yaml"),
+    "supply-chain-vulnerability": Path("config/supply_chain_sources.yaml"),
     "ai-security": Path("config/ai_security.yaml"),
 }
 
@@ -59,7 +60,15 @@ def build_parser() -> argparse.ArgumentParser:
         default="supply-chain-vulnerability",
         help="Filtering and delivery profile.",
     )
-    run_parser.add_argument("--dry-run", action="store_true", help="Do not notify or write state.")
+    mode_group = run_parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
+        "--dry-run", action="store_true", help="Do not notify or write state."
+    )
+    mode_group.add_argument(
+        "--simulate-delivery",
+        action="store_true",
+        help="Do not call Slack; record matched items in local state as simulated successes.",
+    )
     run_parser.add_argument(
         "--state-path",
         type=Path,
@@ -85,8 +94,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--review-lookback-hours requires --dry-run")
 
     try:
-        sources = load_sources_config(Path("config/sources.yaml"))
-        filters = load_filter_config(PROFILE_CONFIG_PATHS[args.profile])
+        if args.profile == "supply-chain-vulnerability":
+            sources, filters = load_profile_sources_config(
+                PROFILE_CONFIG_PATHS[args.profile]
+            )
+        else:
+            sources, filters = load_profile_sources_config(
+                PROFILE_CONFIG_PATHS[args.profile]
+            )
         expected_profile_id = args.profile.replace("-", "_")
         if filters.profile.id != expected_profile_id:
             raise ConfigError(
@@ -103,8 +118,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 + ", ".join(unknown_force_sources)
             )
         state_path = args.state_path or _default_state_path(filters.profile.id)
+        if args.simulate_delivery and not _is_local_state_path(state_path):
+            raise ConfigError("--simulate-delivery requires --state-path under .local/")
         webhook_url = None
-        if not args.dry_run:
+        if not args.dry_run and not args.simulate_delivery:
             webhook_url = os.environ.get(filters.profile.webhook_env)
             if not webhook_url:
                 raise ConfigError(
@@ -116,6 +133,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             state_path=state_path,
             review_lookback_hours=args.review_lookback_hours,
             deliver=not args.dry_run,
+            simulate_delivery=args.simulate_delivery,
             webhook_url=webhook_url,
         )
     except (ConfigError, StateError, SlackError) as exc:
@@ -132,17 +150,21 @@ def run_dry_cycle(
     fetcher: Fetcher = fetch_source,
     output: TextIOBase | None = None,
     deliver: bool = False,
+    simulate_delivery: bool = False,
     webhook_url: str | None = None,
 ) -> int:
     """Run one collection cycle, optionally delivering and persisting successes."""
 
-    if deliver and review_lookback_hours is not None:
-        raise ConfigError("live delivery cannot use review lookback")
+    if simulate_delivery:
+        deliver = False
+    if (deliver or simulate_delivery) and review_lookback_hours is not None:
+        raise ConfigError("delivery modes cannot use review lookback")
     if deliver and not webhook_url:
         raise ConfigError("live delivery requires a webhook URL")
 
     output = output or sys.stdout
     current_time = (now or datetime.now(UTC)).astimezone(UTC)
+    state_existed = state_path.exists()
     if review_lookback_hours is not None:
         if review_lookback_hours < 1:
             raise ConfigError("review lookback hours must be positive")
@@ -152,14 +174,14 @@ def run_dry_cycle(
         notified_keys: frozenset[str] = frozenset()
         mode = f"review profile={filters.profile.id} lookback_hours={review_lookback_hours}"
     else:
-        state_existed = state_path.exists()
         state = load_state(
             state_path,
             now=current_time,
             initial_lookback_hours=filters.notification.initial_lookback_hours,
         )
         notified_keys = frozenset(state.items)
-        mode = f"{'live' if deliver else 'dry-run'} profile={filters.profile.id}"
+        run_mode = "live" if deliver else "simulated-delivery" if simulate_delivery else "dry-run"
+        mode = f"{run_mode} profile={filters.profile.id}"
 
     print(
         f"mode={mode} now={_format_datetime(current_time)} "
@@ -171,6 +193,7 @@ def run_dry_cycle(
     seen_keys = set(notified_keys)
     stats: list[SourceRunStats] = []
     had_source_failure = False
+    baseline_observed = 0
     for source in sources.enabled_sources:
         source_stats = SourceRunStats(source_id=source.id)
         stats.append(source_stats)
@@ -180,13 +203,21 @@ def run_dry_cycle(
             source_stats.fetched_count = len(items)
             candidates_list: list[NormalizedItem] = []
             for item in items:
-                passes_cutoff = is_eligible_item(
-                    item, state, now=current_time, source=source
-                )
                 if not passes_source_filter(item, source):
-                    if review_lookback_hours is not None and passes_cutoff:
+                    if review_lookback_hours is not None:
                         review_dropped.append((item, source, "source-filter"))
                     continue
+                key = article_key(item)
+                passes_cutoff = is_eligible_item(item, state, now=current_time, source=source)
+                if item.published_at is None and source.type == "html":
+                    if (deliver or simulate_delivery) and not state_existed:
+                        if key not in state.observed:
+                            mark_observed(state, item, observed_at=current_time, key=key)
+                            baseline_observed += 1
+                        continue
+                    if key in state.observed or key in notified_keys:
+                        continue
+                    passes_cutoff = True
                 if passes_cutoff:
                     candidates_list.append(item)
             candidates = tuple(candidates_list)
@@ -240,8 +271,15 @@ def run_dry_cycle(
         max_individual_messages=filters.notification.max_individual_messages_per_run,
     )
     ordered_results = tuple(result for batch in batches for result in batch.results)
-    if deliver:
-        report = send_notification_batches(webhook_url or "", batches)
+    if deliver or simulate_delivery:
+        if deliver:
+            report = send_notification_batches(webhook_url or "", batches)
+        else:
+            report = SlackDeliveryReport(
+                succeeded=ordered_results,
+                failed=(),
+                failures=(),
+            )
         notification_time = current_time
         for succeeded in report.succeeded:
             mark_notified(state, succeeded, notified_at=notification_time)
@@ -255,7 +293,12 @@ def run_dry_cycle(
             now=current_time,
             retention_days=filters.notification.state_retention_days,
         )
-        state_changed = bool(report.succeeded) or pruned > 0 or not state_existed
+        state_changed = (
+            bool(report.succeeded)
+            or baseline_observed > 0
+            or pruned > 0
+            or not state_existed
+        )
         if state_changed:
             save_state(state_path, state)
         for stat in stats:
@@ -280,6 +323,7 @@ def run_dry_cycle(
         f"notifications={len(results)} batches={len(batches)} "
         f"state_changed={_format_bool(state_changed)} "
         f"slack_sent={_format_bool(deliver and not delivery_failed)}",
+        f"simulated_delivery={_format_bool(simulate_delivery)}",
         f"review_dropped={len(review_dropped)}",
         file=output,
     )
@@ -299,6 +343,12 @@ def _print_source_stats(stats: SourceRunStats, output: TextIOBase) -> None:
 
 def _format_bool(value: bool) -> str:
     return "true" if value else "false"
+
+
+def _is_local_state_path(path: Path) -> bool:
+    local_root = (Path.cwd() / ".local").resolve()
+    resolved = path.resolve()
+    return resolved == local_root or local_root in resolved.parents
 
 
 def _print_review_candidate(

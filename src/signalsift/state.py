@@ -29,10 +29,19 @@ class NotifiedRecord:
     notified_at: datetime | str
 
 
+@dataclass(frozen=True, slots=True)
+class ObservedRecord:
+    source: str
+    title: str
+    url: str | None
+    observed_at: datetime
+
+
 @dataclass(slots=True)
 class NotificationState:
     initial_cutoff_at: datetime
     items: dict[str, NotifiedRecord] = field(default_factory=dict)
+    observed: dict[str, ObservedRecord] = field(default_factory=dict)
     version: int = STATE_VERSION
 
 
@@ -65,7 +74,26 @@ def load_state(
         _required_string(key, "article key"): _parse_record(value, key)
         for key, value in raw_items.items()
     }
-    return NotificationState(initial_cutoff_at=initial_cutoff, items=items)
+    raw_observed = document.get("observed", {})
+    if not isinstance(raw_observed, dict):
+        raise StateError("observed must be an object")
+    observed = {
+        _required_string(key, "observed key"): _parse_observed(value, key)
+        for key, value in raw_observed.items()
+    }
+    return NotificationState(initial_cutoff_at=initial_cutoff, items=items, observed=observed)
+
+
+def mark_observed(
+    state: NotificationState,
+    item: NormalizedItem,
+    *,
+    observed_at: datetime,
+    key: str,
+) -> None:
+    state.observed[key] = ObservedRecord(
+        item.source_id, item.title, item.url, _as_utc(observed_at, "observed_at")
+    )
 
 
 def is_eligible_item(
@@ -169,6 +197,15 @@ def _serialize_state(state: NotificationState) -> bytes:
             }
             for key, record in sorted(state.items.items())
         },
+        "observed": {
+            key: {
+                "source": record.source,
+                "title": record.title,
+                "url": record.url,
+                "observed_at": _format_datetime(record.observed_at),
+            }
+            for key, record in sorted(state.observed.items())
+        },
     }
     return (json.dumps(document, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode()
 
@@ -195,6 +232,18 @@ def _parse_record(value: Any, key: str) -> NotifiedRecord:
     except StateError:
         notified_at = notified_value
     return NotifiedRecord(source, title, url, published_at, notified_at)
+
+
+def _parse_observed(value: Any, key: str) -> ObservedRecord:
+    if not isinstance(value, dict):
+        raise StateError(f"observed.{key} must be an object")
+    source = _required_string(value.get("source"), f"observed.{key}.source")
+    title = _required_string(value.get("title"), f"observed.{key}.title")
+    url = value.get("url")
+    if url is not None and not isinstance(url, str):
+        raise StateError(f"observed.{key}.url must be a string or null")
+    observed_at = _parse_required_datetime(value.get("observed_at"), f"observed.{key}.observed_at")
+    return ObservedRecord(source, title, url, observed_at)
 
 
 def _parse_required_datetime(value: Any, path: str) -> datetime:

@@ -132,6 +132,82 @@ def fetch_source(
     raise AdapterError(f"source {source.id!r} has no fetch implementation")
 
 
+def fetch_html_index(source: SourceConfig, *, transport: httpx.BaseTransport | None = None) -> tuple[NormalizedItem, ...]:
+    fetched = fetch_bytes(source.url, transport=transport)
+    return parse_html_index(fetched.content, source_id=source.id, source_url=source.url, adapter=source.adapter or "")
+
+
+def parse_html_index(content: bytes, *, source_id: str, source_url: str, adapter: str) -> tuple[NormalizedItem, ...]:
+    parser = _SimpleResearchParser(adapter)
+    try:
+        parser.feed(content.decode("utf-8"))
+        parser.close()
+    except UnicodeDecodeError as exc:
+        raise AdapterError(f"invalid {adapter} HTML encoding") from exc
+    if not parser.entries:
+        raise AdapterError(f"{adapter} HTML contains no article cards")
+    items = tuple(
+        NormalizedItem(
+            id=f"{source_id}:{urljoin(source_url, url)}", source_id=source_id, title=title, url=urljoin(source_url, url),
+            published_at=None, summary="", content="", categories=(), external_ids=(),
+            raw_metadata={"source_format": "html-index", "published_precision": "unknown"},
+        )
+        for title, url in parser.entries
+    )
+    return items
+
+
+class _SimpleResearchParser(HTMLParser):
+    def __init__(self, adapter: str) -> None:
+        super().__init__(convert_charrefs=True)
+        self.adapter = adapter
+        self.entries: list[tuple[str, str]] = []
+        self._current_href: str | None = None
+        self._current_title: list[str] = []
+        self._collect_title = False
+        self._titles: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        href = attributes.get("href") or ""
+        if tag == "a" and self._is_article_href(href):
+            self._current_href = href
+            self._current_title = []
+            track_title = attributes.get("data-page-track-value") or ""
+            if track_title:
+                self._current_title.append(track_title.rsplit(":", 1)[-1])
+        if tag in {"p", "div"} and (attributes.get("fs-list-field") == "title" or "heading-style-h5" in (attributes.get("class") or "")):
+            self._collect_title = True
+
+    def handle_data(self, data: str) -> None:
+        text = " ".join(data.split())
+        if not text:
+            return
+        if self._current_href is not None:
+            self._current_title.append(text)
+        if self._collect_title:
+            self._titles.append(text)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"p", "div"}:
+            self._collect_title = False
+        if tag == "a" and self._current_href is not None:
+            title = " ".join(dict.fromkeys(self._current_title)).strip()
+            if self.adapter in {"lakera_blog", "hiddenlayer_research"} and self._titles:
+                title = self._titles.pop(0)
+            if title:
+                self.entries.append((title, self._current_href))
+            self._current_href = None
+
+    def _is_article_href(self, href: str) -> bool:
+        href = urlsplit(href).path
+        if self.adapter == "huntr_blog":
+            return href.startswith("/huntr-") or href.startswith("/hunting-") or href.startswith("/inside-") or href.startswith("/pickle-") or href.startswith("/exposing-")
+        if self.adapter == "lakera_blog":
+            return href.startswith("/blog/")
+        return href.startswith("/research/")
+
+
 def _normalize_cisa_entry(value: Any, *, source_id: str) -> NormalizedItem:
     if not isinstance(value, dict):
         raise TypeError("expected object")
@@ -346,4 +422,7 @@ def _optional_text(value: Mapping[str, Any], key: str) -> str:
 ADAPTERS: Mapping[str, Adapter] = {
     "cisa_kev": fetch_cisa_kev,
     "flatt_blog": fetch_flatt_blog,
+    "huntr_blog": fetch_html_index,
+    "lakera_blog": fetch_html_index,
+    "hiddenlayer_research": fetch_html_index,
 }
