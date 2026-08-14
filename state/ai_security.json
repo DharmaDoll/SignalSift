@@ -1,0 +1,163 @@
+{
+  "initial_cutoff_at": "2026-08-13T05:43:48.398735Z",
+  "items": {},
+  "observed": {
+    "0763dd26465e43fac40bef68768d859047fab92473936ca29a31f5b0cb5b41d2": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "lakera",
+      "title": "AI Has Stopped Asking for Permission. Has Your Security Team Noticed?",
+      "url": "https://www.lakera.ai/blog/ai-has-stopped-asking-for-permission-has-your-security-team-noticed"
+    },
+    "08f4197fb3e3fd662dacdac55fd1873fde83d02db9dd262ed4444329c9c2c3a9": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "hiddenlayer",
+      "title": "Tokenizer Tampering",
+      "url": "https://www.hiddenlayer.com/research/tokenizer-tampering"
+    },
+    "09376415ceaea50f2237d9e0fceb59ef989fac8eed3647bced1a97ea244c9c48": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "hiddenlayer",
+      "title": "Tokenization Attacks on LLMs: How Adversaries Exploit AI Language Processing",
+      "url": "https://www.hiddenlayer.com/research/tokenization-attacks-on-llms-how-adversaries-exploit-ai-language-processing"
+    },
+    "0e329c6ba13bdc83080e203705fd82cafaafc88002c4b7a4cdc96e322b22f787": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "huntr",
+      "title": "Remote Code Execution via Keras Models",
+      "url": "https://blog.huntr.com/inside-cve-2025-1550-remote-code-execution-via-keras-models"
+    },
+    "127ff7b818e0e8d5110ff0d6463b3cb508d49577a6d01fd274fc8cdcb093e16d": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "hiddenlayer",
+      "title": "AI Agents in Production: Security Lessons from Recent Incidents",
+      "url": "https://www.hiddenlayer.com/research/ai-agents-in-production-security-lessons-from-recent-incidents"
+    },
+    "23896a091778eb0aad70cd500e621460ab315cbca78b2fd15780eb58e792bd8e": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "lakera",
+      "title": "READY OR NOT: Securing the AI Enterprise",
+      "url": "https://www.lakera.ai/blog/adaptive-defenses-for-large-language-models"
+    },
+    "33d34e31ce74240c9beaa092ca8cb62711bea332467015cbd06ab03b24f543ba": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "hiddenlayer",
+      "title": "Malware Found in Trending Hugging Face Repository \"Open-OSS/privacy-filter\"",
+      "url": "https://www.hiddenlayer.com/research/malware-found-in-trending-hugging-face-repository-open-oss-privacy-filter"
+    },
+    "40d7257e964ead390d417903fe167b992edcb3d3b18f4c4cc1f7c2c4c77839e2": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "lakera",
+      "title": "READY OR NOT: Securing the AI Enterprise",
+      "url": "https://www.lakera.ai/blog/ready-or-not-securing-the-ai-enterprise"
+    },
+    "40dfa5ea008c61bcbfa24d4ba8d5da1ccaf882f58d74520d6ec28f1c6b049757": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "huntr",
+      "title": "Exposing Keras Lambda Exploits in TensorFlow Models",
+      "url": "https://blog.huntr.com/exposing-keras-lambda-exploits-in-tensorflow-models"
+    },
+    "4faa43a8590dc88c9cf5eb41d0e7ee4f5257afbf091c7eee5162cf1c462d880b": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "lakera",
+      "title": "From Access Control to Outcome Control: Securing AI Agents with Check Point and Google Cloud",
+      "url": "https://www.lakera.ai/blog/from-access-control-to-outcome-control-securing-ai-agents-with-check-point-and-google-cloud"
+    },
+    "56043519ae965ebaa5310940cf0cffe51e1670d812d4e75c681d61bc40c677a2": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "hiddenlayer",
+      "title": "The Next AI Supply Chain Risk: Malicious Skills in Agentic AI",
+      "url": "https://www.hiddenlayer.com/research/the-next-ai-supply-chain-risk-malicious-skills-in-agentic-ai"
+    },
+    "59d2fa8ec31149c8e80a20ffd6e8e5fbf5d8d97bb87cdcbbc687fb5a70282146": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "hiddenlayer",
+      "title": "What’s the ‘Matter’ with Skills?",
+      "url": "https://www.hiddenlayer.com/research/whats-the-matter-with-skills"
+    },
+    "5fedf78bc46852b7dca727406733c64f30d40aec6482b7d492a88fecb2ba028d": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "hiddenlayer",
+      "title": "How Coding Agents Are Changing Application Risk",
+      "url": "https://www.hiddenlayer.com/research/how-coding-agents-are-changing-application-risk"
+    },
+    "7a8da4246afd8cec871cf3b770334fb94d274214f292002bb9fdb8a2f5639303": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "lakera",
+      "title": "Indirect Prompt Injection: The Hidden Threat Breaking Modern AI Systems",
+      "url": "https://www.lakera.ai/blog/indirect-prompt-injection"
+    },
+    "8314798bfd01314472486d698fecb8da22fac3e9cd04366a39716a9ccd280281": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "hiddenlayer",
+      "title": "Dead Drops in Public: What the AI Agent Stashed on Hugging Face",
+      "url": "https://www.hiddenlayer.com/research/hugging-face-agent-intrusion-analysis"
+    },
+    "85543e5c17981d9d3f4754c7b922d4f9fac36b65b5e6f6fc1432f9d92c7b9638": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "huntr",
+      "title": "How Loading a .pkl File Can Lead to RCE",
+      "url": "https://blog.huntr.com/pickle-rickd-how-loading-a-malicious-pickle-can-pwn-your-machine"
+    },
+    "87301d8f83f342e8adc91109ddd5781b099af1f189db79bb2fa11d9631656f4c": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "hiddenlayer",
+      "title": "Inside the Prompt: How LLMs Learn Roles, Follow Instructions, and Get Exploited",
+      "url": "https://www.hiddenlayer.com/research/inside-the-prompt-how-llms-learn-roles-follow-instructions-and-get-exploited"
+    },
+    "89ca59dfbb75a6008e348ac2b8c9910ff37182c1c236499cef53bf475021a446": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "huntr",
+      "title": "Hunting Vulnerabilities in Keras Model Deserialization",
+      "url": "https://blog.huntr.com/hunting-vulnerabilities-in-keras-model-deserialization"
+    },
+    "9cf9bb59c5217b9a067cfe7ba328331fdb1f4b55ae7c4d24624d5bf0e8f0ea42": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "lakera",
+      "title": "Zero-Click Remote Code Execution: Exploiting MCP & Agentic IDEs",
+      "url": "https://www.lakera.ai/blog/zero-click-remote-code-execution-exploiting-mcp-agentic-ides"
+    },
+    "9d4fae5f2c3173718530ccbc5f68eab873fbad5a8079448924696f7e14924f8b": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "hiddenlayer",
+      "title": "A Security Framework for Coding Agents and their Harnesses",
+      "url": "https://www.hiddenlayer.com/research/how-to-secure-coding-agents"
+    },
+    "9f8d9b86046cb6ec6c1bbe3f2f9c906f10a75871ee5835cee05568ff4d8361e8": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "hiddenlayer",
+      "title": "Updating HiddenLayer’s APE Taxonomy: A New Objective Model for AI Attacks",
+      "url": "https://www.hiddenlayer.com/research/updating-hiddenlayers-ape-taxonomy-a-new-objective-model-for-ai-attacks"
+    },
+    "b3ebf285f0e6457b1408d958c655e852e06d9c549a1627d117afaf2617e2e107": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "huntr",
+      "title": "Leveraging CTF Skills for AI/ML Bug Bounty Success",
+      "url": "https://blog.huntr.com/huntr-spotlight-winters"
+    },
+    "c340c7951f68e8c32fb2c7ff0bed18168cdf19042f01d6047b60fc8fda315ac5": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "hiddenlayer",
+      "title": "ChromaToast Served Pre-Auth",
+      "url": "https://www.hiddenlayer.com/research/chromatoast-served-pre-auth"
+    },
+    "cf78542f447897f99914531cf9968dc7b16b72c17b40bd2caf7e4461a7c5a50f": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "lakera",
+      "title": "Opinion 3 min read August 28, 2025 Why We Need OWASP’s AIVSS: Extending CVSS for the Agentic AI Era",
+      "url": "https://www.lakera.ai/blog/why-we-need-owasps-aivss-extending-cvss-for-the-agentic-ai-era"
+    },
+    "e86fcf4c8055256afe3ddce3c0301ba6536dc67cfb107a3581821d1b96c61b85": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "lakera",
+      "title": "READY OR NOT: Securing the AI Enterprise",
+      "url": "https://www.lakera.ai/blog/ai-security-isnt-one-problem-anymore-so-why-are-we-still-treating-it-like-one"
+    },
+    "ec216fdc69988dade2134ec92feb7cf921b1f2be248645db985867303c64a2b2": {
+      "observed_at": "2026-08-14T05:43:48.398735Z",
+      "source": "huntr",
+      "title": "Stop Writing Reports, Start Breaking AI",
+      "url": "https://blog.huntr.com/huntr-2-0-stop-writing-reports-start-breaking-ai"
+    }
+  },
+  "version": 1
+}
