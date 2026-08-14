@@ -41,7 +41,7 @@ permissions:
 
 現在、誤通知を避けるため定期実行cronはコメントアウトされています。
 
-Webhookを設定する前にActionsと両Profileの取得・state重複排除だけを確認する場合は、**Run workflow** で `simulate_delivery` を有効にします。各Profileを同じ一時stateで2回実行し、Slack送信と`state`ブランチへのpushは行いません。ログで1回目の`simulated_delivery=true`と、2回目の`duplicates`を確認してください。
+Webhookを設定する前にActionsと両Profileの取得・state重複排除だけを確認する場合は、**Run workflow** で `simulate_delivery` を有効にします。Slackと本番の`state`ブランチは使わず、シミュレーション結果を専用の`state-test`ブランチへ保存します。同じcommitを対象にWorkflowを2回実行し、1回目の`state_changed=true`と、別runnerで動く2回目の`duplicates`、`notifications=0`、`state_changed=false`を確認してください。
 
 実配信を確認する場合は、Repository secretsを設定してから `simulate_delivery` を無効にして手動実行します。
 

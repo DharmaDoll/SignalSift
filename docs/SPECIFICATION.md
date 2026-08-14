@@ -155,6 +155,8 @@ GitHub Actionsは `state` ブランチの内容を上記パスへ準備してか
 
 `--simulate-delivery` はローカルでstate更新と重複排除を検証するための明示的なテストモードとする。SlackとWebhookを使用せず、採用記事をシミュレーション成功としてstateへ追加する。`--state-path`は`.local/`配下を必須とし、`--dry-run`および`--review-lookback-hours`とは併用不可とする。生成されたstateはSlack送信成功を示さず、本番stateへ転用してはならない。
 
+GitHub Actionsの手動実行で`simulate_delivery`を選んだ場合は、同じCLIモードのstateを本番`state`とは独立した`state-test`ブランチへ保存する。Workflowを2回実行することでrunnerをまたぐ取得、保存、重複排除を検証できる。シミュレーション実行はSlackへ送信せず、本番`state`ブランチを変更しない。
+
 `--review-lookback-hours HOURS` は正の整数とし、`--dry-run` とだけ併用できる精度調整用オプションとする。指定時は保存済みの `initial_cutoff_at` と通知履歴を一時的に無視し、実行時刻から指定時間を遡った記事を再評価する。本番設定の24時間、状態ファイル、Slackには影響を与えない。通常の `--dry-run` は保存済みcutoffと通知履歴を尊重する。
 
 ### 6.2 ローカル開発・デバッグ
