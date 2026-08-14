@@ -146,7 +146,7 @@ Defines the Supply Chain Vulnerability profile and its complete source set:
 - optional summary-character limit used only for matching
 - small source-specific noise filters for this profile
 
-Flatt, Wiz, StepSecurity, and Aikido currently have only obvious publication-specific exclusions. Topic selection and source membership are controlled independently in each profile file.
+Flatt, Wiz, SANS ISC, StepSecurity, and Aikido currently have only obvious publication-specific exclusions; SANS ISC excludes the summary-only daily Stormcast entries. Topic selection and source membership are controlled independently in each profile file.
 
 GitHub Security Blog uses its official RSS feed with `match_content: false`; its title, short excerpt, categories, and external IDs are evaluated while the long feed body is excluded from matching.
 

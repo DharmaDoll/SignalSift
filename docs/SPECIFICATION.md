@@ -235,13 +235,14 @@ MVPではLLM用APIキーや外部DB接続情報を要求しない。
 
 両方を指定した場合は `exclude` を先に評価し、除外一致は常に優先する。
 
-`source_filter` は両Profileに共通して明白な媒体固有ノイズだけを扱う。現行設定ではFlattの社員インタビュー・採用情報・サービス紹介、Wizのwebinar・customer story、StepSecurityのwebinar・customer story・mid-year update、Aikidoのcustomer story・webinar・company update・funding・製品比較カテゴリを除外する。Supply-chain、脆弱性、AI等の主題語はここへ重複させず、各Profile設定で評価する。
+`source_filter` は両Profileに共通して明白な媒体固有ノイズだけを扱う。現行設定ではFlattの社員インタビュー・採用情報・サービス紹介、Wizのwebinar・customer story、SANS ISCの日次Stormcast、StepSecurityのwebinar・customer story・mid-year update、Aikidoのcustomer story・webinar・company update・funding・製品比較カテゴリを除外する。Supply-chain、脆弱性、AI等の主題語はここへ重複させず、各Profile設定で評価する。
 
-MVPの有効な情報源は以下の8件である。
+Supply Chain Vulnerability Profileの有効な情報源は以下の9件である。AI Security Profileの独自情報源集合は`config/ai_security.yaml`を正本とする。
 
 | ID | 種別 | 優先度 | 役割 |
 |---|---|---:|---|
 | `jpcert` | RSS/RDF | 3 | 国内向け運用情報、注意喚起 |
+| `sans_isc` | RSS | 2 | 実観測された攻撃、脆弱性、技術分析 |
 | `cisa_kev` | JSON + `cisa_kev` | 3 | 悪用確認済み脆弱性 |
 | `flatt` | HTML + `flatt_blog` | 3 | 国内AppSec、サプライチェーン分析 |
 | `wiz` | RSS | 3 | クラウド、脆弱性、AI/MCP研究 |
@@ -842,7 +843,7 @@ Actions Cacheを通知履歴の正本にしない。
 
 ### 20.1 性能
 
-- 通常の7情報源構成でGitHub Actionsの10分timeout内に完了する。
+- 各Profileの全有効情報源を処理してGitHub Actionsの10分timeout内に完了する。
 - 1情報源の遅延はHTTP timeoutで上限を設ける。
 - 全レスポンスを無制限にメモリへ読み込まない。
 - MVPの想定規模では単一プロセス、単一ジョブで処理する。
@@ -939,7 +940,7 @@ Slack成功後かつ状態永続化前の障害では重複が起こり得る。
 MVPは以下をすべて満たしたとき完成とする。
 
 - `signalsift run` が1回の完全な処理を実行して終了する。
-- 有効な7情報源を仕様どおり処理できる。
+- 各Profileの全有効情報源を仕様どおり処理できる。
 - 通常Feedが情報源固有クラスなしで正規化される。
 - CISA KEVが専用アダプターで正規化される。
 - Flattがトップページ専用アダプターで短い記事メタデータへ正規化される。

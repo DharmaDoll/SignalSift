@@ -101,6 +101,17 @@ sources:
     priority: 3
     notes: Japanese operational alerts and curated security information.
 
+  - id: sans_isc
+    name: SANS Internet Storm Center
+    enabled: true
+    type: rss
+    url: https://isc.sans.edu/rssfeed.xml
+    priority: 2
+    source_filter:
+      exclude:
+        - ISC Stormcast
+    notes: Operational attack observations and technical analysis; daily podcast entries are excluded.
+
   - id: flatt
     name: GMO Flatt Security
     enabled: true

@@ -298,6 +298,31 @@ def test_ai_security_requires_ai_and_security_context() -> None:
     )
 
 
+def test_sans_isc_excludes_stormcast_and_selects_profile_signals() -> None:
+    sans_isc = SOURCES["sans_isc"]
+    stormcast = item(
+        "sans_isc",
+        "ISC Stormcast For Friday, August 14th, 2026",
+    )
+    exploited_vulnerability = item(
+        "sans_isc",
+        "Microsoft Patch Tuesday",
+        "One vulnerability is exploited in the wild and two are zero-days.",
+    )
+    ai_attack = item(
+        "sans_isc",
+        "Prompt injection targeting LLM agents",
+        "The attack enabled credential theft through a malicious tool response.",
+    )
+
+    assert not passes_source_filter(stormcast, sans_isc)
+    supply_result = evaluate_item(exploited_vulnerability, sans_isc, SECURITY)
+    assert supply_result is not None
+    assert supply_result.score == 7
+    ai_result = evaluate_item(ai_attack, sans_isc, AI_SECURITY)
+    assert ai_result is not None
+    assert ai_result.score == 7
+
 def test_ai_profile_rejects_generic_security_without_ai_context() -> None:
     metabase = evaluate_item(
         item(

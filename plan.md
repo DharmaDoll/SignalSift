@@ -140,7 +140,7 @@
 
 ## Definition of Done
 
-- [x] `signalsift run` が有効な8情報源を独立して処理する。
+- [x] `signalsift run` が各Profileの全有効情報源を独立して処理する。
 - [x] 重要な3領域だけを説明可能なscoreで低ノイズ通知する。
 - [x] Slack成功前に状態を更新せず、正常時に同一記事を再通知しない。
 - [x] runnerをまたいでstateを維持し、初回の過去記事をbackfillしない。

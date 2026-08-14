@@ -28,8 +28,8 @@ def test_loads_repository_configuration() -> None:
     _, security = load_profile_sources_config(ROOT / "config/supply_chain_sources.yaml")
     ai_sources, ai_security = load_profile_sources_config(ROOT / "config/ai_security.yaml")
 
-    assert len(sources.enabled_sources) == 8
-    assert len(ai_sources.enabled_sources) == 11
+    assert len(sources.enabled_sources) == 9
+    assert len(ai_sources.enabled_sources) == 12
     assert "cisa_kev" not in {source.id for source in ai_sources.enabled_sources}
     assert {
         source.id
@@ -42,8 +42,18 @@ def test_loads_repository_configuration() -> None:
         "hiddenlayer",
         "adversa_ai",
     }
-    assert sources.enabled_sources[1].adapter == "cisa_kev"
-    assert sources.enabled_sources[2].adapter == "flatt_blog"
+    assert sources.enabled_sources[1].id == "sans_isc"
+    assert sources.enabled_sources[2].adapter == "cisa_kev"
+    assert sources.enabled_sources[3].adapter == "flatt_blog"
+    for profile_sources in (sources, ai_sources):
+        sans_isc = next(
+            source for source in profile_sources.enabled_sources if source.id == "sans_isc"
+        )
+        assert sans_isc.type == "rss"
+        assert sans_isc.priority == 2
+        assert sans_isc.url == "https://isc.sans.edu/rssfeed.xml"
+        assert sans_isc.source_filter is not None
+        assert sans_isc.source_filter.exclude == ("ISC Stormcast",)
     github = next(
         source for source in sources.enabled_sources if source.id == "github_security_blog"
     )
