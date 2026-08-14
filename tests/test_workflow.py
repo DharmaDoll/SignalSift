@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -7,6 +8,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github/workflows/signalsift.yml"
+LOAD_STATE_SCRIPT = ROOT / ".github/scripts/load-state.sh"
+PERSIST_STATE_SCRIPT = ROOT / ".github/scripts/persist-state.sh"
 
 
 def test_workflow_keeps_schedule_disabled_until_operations_enable_it() -> None:
@@ -37,7 +40,10 @@ def test_workflow_dispatch_can_simulate_state_without_slack() -> None:
     assert "simulation_flag=(--simulate-delivery)" in steps[
         "Run AI Security profile"
     ]["run"]
-    assert 'git push origin "$STATE_BRANCH"' in steps["Persist notification state"]["run"]
+    assert steps["Load notification state"]["run"] == ".github/scripts/load-state.sh"
+    assert steps["Persist notification state"]["run"] == (
+        ".github/scripts/persist-state.sh"
+    )
 
 
 def test_workflow_keeps_failure_and_state_boundaries_explicit() -> None:
@@ -68,7 +74,10 @@ def test_workflow_keeps_failure_and_state_boundaries_explicit() -> None:
         "SLACK_WEBHOOK_URL_AI_SECURITY"
     }
     assert set(by_name["Load notification state"]["env"]) == {"GITHUB_TOKEN"}
-    assert set(by_name["Persist notification state"]["env"]) == {"GITHUB_TOKEN"}
+    assert set(by_name["Persist notification state"]["env"]) == {
+        "GITHUB_TOKEN",
+        "STATE_BRANCH_EXISTS",
+    }
     assert by_name["Persist notification state"]["if"] == (
         "always() && steps.load_state.outcome == 'success'"
     )
@@ -79,7 +88,10 @@ def test_workflow_keeps_failure_and_state_boundaries_explicit() -> None:
 
 
 def test_workflow_does_not_put_github_token_in_remote_url() -> None:
-    text = WORKFLOW.read_text(encoding="utf-8")
+    text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (WORKFLOW, LOAD_STATE_SCRIPT, PERSIST_STATE_SCRIPT)
+    )
 
     assert 'git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"' in text
     assert "x-access-token:${GITHUB_TOKEN}" not in text
@@ -87,11 +99,16 @@ def test_workflow_does_not_put_github_token_in_remote_url() -> None:
 
 
 def test_workflow_distinguishes_missing_state_branch_from_git_failure() -> None:
-    text = WORKFLOW.read_text(encoding="utf-8")
+    text = LOAD_STATE_SCRIPT.read_text(encoding="utf-8")
 
     assert 'git ls-remote --exit-code --heads origin "$STATE_BRANCH"' in text
     assert '"$state_probe" -eq 2' in text
     assert "cannot inspect origin/$STATE_BRANCH" in text
+
+
+def test_workflow_state_scripts_have_valid_bash_syntax() -> None:
+    for script in (LOAD_STATE_SCRIPT, PERSIST_STATE_SCRIPT):
+        subprocess.run(["bash", "-n", script], check=True)
 
 
 def test_workflow_yaml_is_valid() -> None:

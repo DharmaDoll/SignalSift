@@ -67,30 +67,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
-        run: |
-          set -Eeuo pipefail
-          mkdir -p .local/state
-          echo "state_branch=${STATE_BRANCH} simulated_delivery=${SIMULATE_DELIVERY}"
-
-          state_probe=0
-          git ls-remote --exit-code --heads origin "$STATE_BRANCH" >/dev/null || state_probe=$?
-          if [ "$state_probe" -eq 0 ]; then
-            git fetch origin "$STATE_BRANCH:refs/remotes/origin/$STATE_BRANCH"
-            echo "branch_exists=true" >> "$GITHUB_OUTPUT"
-          elif [ "$state_probe" -eq 2 ]; then
-            echo "branch_exists=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "cannot inspect origin/$STATE_BRANCH (git status $state_probe)" >&2
-            exit 1
-          fi
-
-          for state_file in supply_chain_vulnerability ai_security; do
-            remote_path="origin/$STATE_BRANCH:state/${state_file}.json"
-            local_path=".local/state/${state_file}.json"
-            if git show "$remote_path" > "$RUNNER_TEMP/${state_file}.json" 2>/dev/null; then
-              mv "$RUNNER_TEMP/${state_file}.json" "$local_path"
-            fi
-          done
+        run: .github/scripts/load-state.sh
 
       - name: Run Supply Chain Vulnerability profile
         id: run_supply_chain
@@ -130,36 +107,9 @@ jobs:
         if: always() && steps.load_state.outcome == 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STATE_BRANCH_EXISTS: ${{ steps.load_state.outputs.branch_exists }}
         shell: bash
-        run: |
-          set -Eeuo pipefail
-          mkdir -p "$RUNNER_TEMP/signalsift-state"
-          for state_path in .local/state/*.json; do
-            if [ -f "$state_path" ]; then
-              cp "$state_path" "$RUNNER_TEMP/signalsift-state/"
-            fi
-          done
-
-          if [ "${{ steps.load_state.outputs.branch_exists }}" = "true" ]; then
-            git checkout -B "$STATE_BRANCH" "origin/$STATE_BRANCH"
-          else
-            git checkout --orphan "$STATE_BRANCH"
-            git rm -rf .
-          fi
-
-          mkdir -p state
-          for state_path in "$RUNNER_TEMP/signalsift-state"/*.json; do
-            if [ -f "$state_path" ]; then
-              cp "$state_path" state/
-            fi
-          done
-          git add state
-          if ! git diff --cached --quiet; then
-            git -c user.name="github-actions[bot]" \
-              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-              commit -m "chore: persist SignalSift ${STATE_BRANCH} notification state"
-            git push origin "$STATE_BRANCH"
-          fi
+        run: .github/scripts/persist-state.sh
 
       - name: Remove Git credentials
         if: always()
