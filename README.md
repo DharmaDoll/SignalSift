@@ -131,7 +131,7 @@ config/ai_security.yaml
 
 The two files are intentionally independent. Changing the Supply Chain source list does not change AI Security, and vice versa.
 
-運用開始手順、Secret設定、初回実行、cron有効化、障害対応は[docs/OPERATIONS.md](docs/OPERATIONS.md)を参照してください。
+Fork作成からActions権限、Webhookなし検証、Slack Secret、本番state、cron有効化、upstream同期までの運用開始手順は[docs/OPERATIONS.md](docs/OPERATIONS.md)を参照してください。
 実PCでの`uv`、dry-run、日次観測、テストSlack送信の手順も同文書にまとめています。
 
 ### `supply_chain_sources.yaml`

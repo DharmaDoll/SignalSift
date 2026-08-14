@@ -2,6 +2,149 @@
 
 この文書は、SignalSiftを自分のGitHubリポジトリとSlackで運用開始するための手順です。
 
+## 0. Forkから運用開始までのクイックスタート
+
+この章は、公開リポジトリをForkし、Webhookなしの検証を経てSlack配信を開始するまでの一本道の手順です。組織内の専用リポジトリへコピーして運用する場合も、Fork操作以外は同じです。
+
+### 0.1 事前に必要な権限
+
+次を確認してください。
+
+- GitHubでリポジトリをForkし、Fork先のSettingsとActions Secretsを変更できる
+- Slack workspaceへAppを追加できる
+- 通知先SlackチャンネルへAppを追加できる
+- 組織のGitHub Actionsポリシーが`actions/checkout`と`astral-sh/setup-uv`を許可している
+
+組織やEnterpriseのポリシーでActionsやwrite tokenが制限されている場合は、リポジトリ設定だけでは変更できません。管理者へ依頼してください。
+
+### 0.2 リポジトリをForkする
+
+1. [SignalSiftリポジトリ](https://github.com/DharmaDoll/SignalSift)を開く
+2. 右上の **Fork** を選択する
+3. 運用する個人アカウントまたはOrganizationをOwnerに選ぶ
+4. Repository nameを確認する
+5. **Copy the `main` branch only** を有効にしたまま **Create fork** を選択する
+6. 作成後、URLが自分のFork（`https://github.com/<OWNER>/SignalSift`）であることを確認する
+
+Forkは元リポジトリとは別のSettings、Secrets、Actions実行履歴を持ちます。元リポジトリのSecretや`state`、`state-test`ブランチは引き継がれません。
+
+### 0.3 Fork側でActionsとwrite権限を有効にする
+
+1. Forkの **Actions** タブを開く
+2. 無効化の案内が表示された場合は、内容を確認して **I understand my workflows, go ahead and enable them** を選択する
+3. **Settings → Actions → General** を開く
+4. **Actions permissions** で、少なくともWorkflowが使用する`actions/checkout`と`astral-sh/setup-uv`を許可する
+5. **Workflow permissions** で **Read and write permissions** を選択して保存する
+
+Workflow自身も`permissions: contents: write`だけを要求します。このwrite権限は通知履歴を`state`または`state-test`ブランチへpushするために必要です。Pull Requestを作成・承認する権限は不要です。GitHubの設定項目は[公式のActions設定手順](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository)も参照してください。
+
+### 0.4 WebhookなしでActionsとstateを検証する
+
+Slackを準備する前に、シミュレーションでForkの動作を確認します。
+
+1. Forkの **Actions → SignalSift Profiles** を開く
+2. **Run workflow** を選択する
+3. Branchに`main`を選択する
+4. `simulate_delivery`を有効にして実行する
+5. `Test`、`Load notification state`、両Profile、`Persist notification state`が成功することを確認する
+6. 同じ条件でもう一度実行する
+
+1回目は`state-test`ブランチを作成し、採用記事があればシミュレーション済みとして保存します。2回目は別runnerが同ブランチを読み込みます。ログの期待値は次です。
+
+```text
+state_branch=state-test
+simulated_delivery=true
+
+# 1回目（採用記事がある場合）
+notifications=<1以上>
+state_changed=true
+
+# 2回目
+duplicates=<1回目に保存した件数>
+notifications=0
+state_changed=false
+slack_sent=false
+```
+
+対象記事が0件なら`notifications=0`でも正常です。その場合も1回目にstateファイルが作成され、2回目は`state_changed=false`になります。Forkの **Code → Branches** で`state-test`が作成され、次の2ファイルだけが保存されていることを確認します。
+
+```text
+state/supply_chain_vulnerability.json
+state/ai_security.json
+```
+
+`state-test`はSlack送信成功を示しません。本番の`state`へコピーしないでください。
+
+### 0.5 Slack Incoming Webhookを作成する
+
+最初は本番チャンネルではなく、SignalSift検証用チャンネルを推奨します。
+
+1. [SlackのIncoming Webhook手順](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks)からSlack Appを作成する
+2. App設定の **Incoming Webhooks** を開く
+3. **Activate Incoming Webhooks** をOnにする
+4. **Add New Webhook to Workspace** を選択する
+5. 投稿先チャンネルを選び、許可する
+6. **Webhook URLs for Your Workspace** に表示されたURLをコピーする
+
+Webhookは選択したチャンネルに紐付きます。非公開チャンネルの場合、作成者がそのチャンネルへ参加している必要があります。URL自体がSecretなので、Issue、Pull Request、ソース、ログ、チャットへ貼らないでください。
+
+Profileごとにチャンネルを分ける場合はWebhookを2つ作ります。同じチャンネルへ送る場合は、同じWebhook URLを両方のRepository secretへ登録できます。
+
+### 0.6 ForkへRepository Secretsを登録する
+
+1. Forkの **Settings → Secrets and variables → Actions** を開く
+2. **New repository secret** を選択する
+3. 次の2つを正確な名前で登録する
+
+```text
+SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY
+SLACK_WEBHOOK_URL_AI_SECURITY
+```
+
+値には対応するIncoming Webhook URLを設定します。登録後、GitHub画面から値を再表示することはできません。環境名やVariableではなく、Repository secretとして登録してください。
+
+### 0.7 初回の実配信と本番stateを確認する
+
+1. **Actions → SignalSift Profiles → Run workflow** を開く
+2. Branchに`main`を選ぶ
+3. `simulate_delivery`を無効にして実行する
+4. Slackに期待した通知が届くことを確認する
+5. Workflowの`Persist notification state`が成功することを確認する
+6. ForkのBranchesで`state`ブランチが作成されたことを確認する
+7. 同じ条件でもう一度手動実行する
+
+2回目はSlack成功済みの記事が`duplicates`へ数えられ、同じ記事が再投稿されません。新着記事が発生した場合は、その記事だけが通知されるため`notifications=0`にならないことがあります。
+
+Slack送信が失敗した記事は`state`へ追加されず、次回実行で再試行されます。`state-test`と`state`は役割が異なるため、統合・コピーしないでください。
+
+### 0.8 定期実行を有効にする
+
+初回実配信と重複抑止を確認した後だけ、`.github/workflows/signalsift.yml`のscheduleコメントをForkの`main`で解除します。変更はPull Requestでレビューしてからmergeすることを推奨します。
+
+公開リポジトリをForkした場合、scheduled workflowはGitHubによって初期状態で無効化されます。また、公開リポジトリは60日間活動がないとscheduled workflowが自動無効化されることがあります。scheduleをmergeした後、**Actions → SignalSift Profiles** のメニューに **Enable workflow** が表示される場合は有効化してください。詳細は[GitHubのWorkflow有効化手順](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/disable-and-enable-workflows)を参照してください。
+
+有効化後は、Actions画面で次回実行が作成されること、Slack通知、`state`ブランチの更新を確認します。cronはUTC基準です。
+
+### 0.9 upstreamの更新を取り込む
+
+セキュリティ修正や情報源変更を取り込む場合は、Forkのトップ画面にある **Sync fork → Update branch** を使用できます。更新内容とWorkflow差分を必ず確認してから同期してください。詳しくは[GitHubのFork同期手順](https://docs.github.com/en/pull-requests/how-tos/work-with-forks/syncing-a-fork)を参照してください。
+
+このリポジトリではupstream側のscheduleを安全のためコメントアウトしています。upstream同期後は、Fork側で有効化したscheduleが再びコメントアウトされていないか確認してください。Profile設定をForkで変更している場合も競合や上書きに注意してください。`state`と`state-test`は別ブランチなので、通常の`main`同期では変更されません。
+
+### 0.10 運用開始チェックリスト
+
+- [ ] Fork側でActionsが有効
+- [ ] `GITHUB_TOKEN`が`contents: write`を使用可能
+- [ ] WebhookなしのWorkflowを2回実行し、`state-test`のrunner間重複排除を確認
+- [ ] Slack Incoming Webhookを検証用チャンネルへ作成
+- [ ] 2つのRepository secretをFork側へ登録
+- [ ] `simulate_delivery=false`でSlack実配信を確認
+- [ ] `state`ブランチ作成と2回目の重複抑止を確認
+- [ ] 通知内容と誤検知件数を数日間確認
+- [ ] scheduleのコメント解除をレビュー
+- [ ] scheduled workflowがGitHub上で有効
+- [ ] Webhook URLがソース、ログ、Issue、Pull Requestへ露出していない
+
 ## 1. 運用リポジトリを用意する
 
 共有元のリポジトリを直接本番運用せず、次のいずれかを用意します。
