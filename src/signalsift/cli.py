@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from io import TextIOBase
 from pathlib import Path
@@ -43,10 +44,19 @@ from signalsift.state import (
 
 
 Fetcher = Callable[[SourceConfig], tuple[NormalizedItem, ...]]
+ReviewDrop = tuple[NormalizedItem, SourceConfig, str]
 PROFILE_CONFIG_PATHS = {
     "supply-chain-vulnerability": Path("config/supply_chain_sources.yaml"),
     "ai-security": Path("config/ai_security.yaml"),
 }
+
+
+@dataclass(frozen=True, slots=True)
+class SourceProcessingResult:
+    stats: SourceRunStats
+    matched: tuple[EvaluationResult, ...] = ()
+    review_dropped: tuple[ReviewDrop, ...] = ()
+    observed_count: int = 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -94,39 +104,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--review-lookback-hours requires --dry-run")
 
     try:
-        if args.profile == "supply-chain-vulnerability":
-            sources, filters = load_profile_sources_config(
-                PROFILE_CONFIG_PATHS[args.profile]
-            )
-        else:
-            sources, filters = load_profile_sources_config(
-                PROFILE_CONFIG_PATHS[args.profile]
-            )
-        expected_profile_id = args.profile.replace("-", "_")
-        if filters.profile.id != expected_profile_id:
-            raise ConfigError(
-                f"profile ID mismatch: expected {expected_profile_id!r}, "
-                f"got {filters.profile.id!r}"
-            )
-        known_source_ids = {source.id for source in sources.sources}
-        unknown_force_sources = sorted(
-            set(filters.profile.force_notify_source_ids) - known_source_ids
-        )
-        if unknown_force_sources:
-            raise ConfigError(
-                "profile.force_notify_source_ids: unknown source ID(s): "
-                + ", ".join(unknown_force_sources)
-            )
+        sources, filters = _load_profile(args.profile)
         state_path = args.state_path or _default_state_path(filters.profile.id)
-        if args.simulate_delivery and not _is_local_state_path(state_path):
-            raise ConfigError("--simulate-delivery requires --state-path under .local/")
-        webhook_url = None
-        if not args.dry_run and not args.simulate_delivery:
-            webhook_url = os.environ.get(filters.profile.webhook_env)
-            if not webhook_url:
-                raise ConfigError(
-                    f"required webhook environment variable is missing: {filters.profile.webhook_env}"
-                )
+        webhook_url = _resolve_webhook_url(
+            filters,
+            state_path=state_path,
+            dry_run=args.dry_run,
+            simulate_delivery=args.simulate_delivery,
+        )
         return run_dry_cycle(
             sources,
             filters,
@@ -138,6 +123,158 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     except (ConfigError, StateError, SlackError) as exc:
         parser.exit(2, f"configuration error: {exc}\n")
+
+
+def _load_profile(profile_name: str) -> tuple[SourcesConfig, FilterConfig]:
+    sources, filters = load_profile_sources_config(PROFILE_CONFIG_PATHS[profile_name])
+    expected_profile_id = profile_name.replace("-", "_")
+    if filters.profile.id != expected_profile_id:
+        raise ConfigError(
+            f"profile ID mismatch: expected {expected_profile_id!r}, "
+            f"got {filters.profile.id!r}"
+        )
+
+    known_source_ids = {source.id for source in sources.sources}
+    unknown_force_sources = sorted(
+        set(filters.profile.force_notify_source_ids) - known_source_ids
+    )
+    if unknown_force_sources:
+        raise ConfigError(
+            "profile.force_notify_source_ids: unknown source ID(s): "
+            + ", ".join(unknown_force_sources)
+        )
+    return sources, filters
+
+
+def _resolve_webhook_url(
+    filters: FilterConfig,
+    *,
+    state_path: Path,
+    dry_run: bool,
+    simulate_delivery: bool,
+) -> str | None:
+    if simulate_delivery:
+        if not _is_local_state_path(state_path):
+            raise ConfigError("--simulate-delivery requires --state-path under .local/")
+        return None
+    if dry_run:
+        return None
+
+    webhook_url = os.environ.get(filters.profile.webhook_env)
+    if not webhook_url:
+        raise ConfigError(
+            f"required webhook environment variable is missing: {filters.profile.webhook_env}"
+        )
+    return webhook_url
+
+
+def _initialize_cycle(
+    filters: FilterConfig,
+    *,
+    state_path: Path,
+    current_time: datetime,
+    review_lookback_hours: int | None,
+    deliver: bool,
+    simulate_delivery: bool,
+) -> tuple[NotificationState, frozenset[str], str]:
+    if review_lookback_hours is not None:
+        if review_lookback_hours < 1:
+            raise ConfigError("review lookback hours must be positive")
+        state = NotificationState(
+            initial_cutoff_at=current_time - timedelta(hours=review_lookback_hours)
+        )
+        mode = (
+            f"review profile={filters.profile.id} "
+            f"lookback_hours={review_lookback_hours}"
+        )
+        return state, frozenset(), mode
+
+    state = load_state(
+        state_path,
+        now=current_time,
+        initial_lookback_hours=filters.notification.initial_lookback_hours,
+    )
+    if deliver:
+        run_mode = "live"
+    elif simulate_delivery:
+        run_mode = "simulated-delivery"
+    else:
+        run_mode = "dry-run"
+    return state, frozenset(state.items), f"{run_mode} profile={filters.profile.id}"
+
+
+def _process_source(
+    source: SourceConfig,
+    filters: FilterConfig,
+    *,
+    state: NotificationState,
+    notified_keys: frozenset[str],
+    seen_keys: frozenset[str],
+    current_time: datetime,
+    state_existed: bool,
+    review: bool,
+    delivery_mode: bool,
+    fetcher: Fetcher,
+) -> SourceProcessingResult:
+    stats = SourceRunStats(source_id=source.id)
+    review_dropped: list[ReviewDrop] = []
+    observed_count = 0
+    try:
+        items = fetcher(source)
+        stats.fetch_status = "ok"
+        stats.fetched_count = len(items)
+        candidates: list[NormalizedItem] = []
+        for item in items:
+            if not passes_source_filter(item, source):
+                if review:
+                    review_dropped.append((item, source, "source-filter"))
+                continue
+
+            key = article_key(item)
+            passes_cutoff = is_eligible_item(
+                item, state, now=current_time, source=source
+            )
+            if item.published_at is None and source.type == "html":
+                if delivery_mode and not state_existed:
+                    if key not in state.observed:
+                        mark_observed(state, item, observed_at=current_time, key=key)
+                        observed_count += 1
+                    continue
+                if key in state.observed or key in notified_keys:
+                    continue
+                passes_cutoff = True
+            if passes_cutoff:
+                candidates.append(item)
+
+        stats.candidate_count = len(candidates)
+        matched: list[EvaluationResult] = []
+        for item in candidates:
+            result = evaluate_item(
+                item,
+                source,
+                filters,
+                force_notify=source.id in filters.profile.force_notify_source_ids,
+            )
+            if result is None:
+                if review:
+                    review_dropped.append((item, source, "global-filter"))
+                continue
+            matched.append(result)
+
+        stats.matched_count = len(matched)
+        unique, stats.duplicate_count = deduplicate_results(
+            tuple(matched), notified_keys=seen_keys
+        )
+        return SourceProcessingResult(
+            stats=stats,
+            matched=unique,
+            review_dropped=tuple(review_dropped),
+            observed_count=observed_count,
+        )
+    except FetchError as exc:
+        stats.fetch_status = "failed"
+        stats.error = f"{type(exc).__name__}: {exc}"
+        return SourceProcessingResult(stats=stats)
 
 
 def run_dry_cycle(
@@ -165,90 +302,50 @@ def run_dry_cycle(
     output = output or sys.stdout
     current_time = (now or datetime.now(UTC)).astimezone(UTC)
     state_existed = state_path.exists()
-    if review_lookback_hours is not None:
-        if review_lookback_hours < 1:
-            raise ConfigError("review lookback hours must be positive")
-        state = NotificationState(
-            initial_cutoff_at=current_time - timedelta(hours=review_lookback_hours)
-        )
-        notified_keys: frozenset[str] = frozenset()
-        mode = f"review profile={filters.profile.id} lookback_hours={review_lookback_hours}"
-    else:
-        state = load_state(
-            state_path,
-            now=current_time,
-            initial_lookback_hours=filters.notification.initial_lookback_hours,
-        )
-        notified_keys = frozenset(state.items)
-        run_mode = "live" if deliver else "simulated-delivery" if simulate_delivery else "dry-run"
-        mode = f"{run_mode} profile={filters.profile.id}"
+    state, notified_keys, mode = _initialize_cycle(
+        filters,
+        state_path=state_path,
+        current_time=current_time,
+        review_lookback_hours=review_lookback_hours,
+        deliver=deliver,
+        simulate_delivery=simulate_delivery,
+    )
 
     print(
         f"mode={mode} now={_format_datetime(current_time)} "
         f"cutoff={_format_datetime(state.initial_cutoff_at)}",
         file=output,
     )
-    all_results = []
-    review_dropped: list[tuple[NormalizedItem, SourceConfig, str]] = []
+    all_results: list[EvaluationResult] = []
+    review_dropped: list[ReviewDrop] = []
     seen_keys = set(notified_keys)
     stats: list[SourceRunStats] = []
     had_source_failure = False
     baseline_observed = 0
     for source in sources.enabled_sources:
-        source_stats = SourceRunStats(source_id=source.id)
-        stats.append(source_stats)
-        try:
-            items = fetcher(source)
-            source_stats.fetch_status = "ok"
-            source_stats.fetched_count = len(items)
-            candidates_list: list[NormalizedItem] = []
-            for item in items:
-                if not passes_source_filter(item, source):
-                    if review_lookback_hours is not None:
-                        review_dropped.append((item, source, "source-filter"))
-                    continue
-                key = article_key(item)
-                passes_cutoff = is_eligible_item(item, state, now=current_time, source=source)
-                if item.published_at is None and source.type == "html":
-                    if (deliver or simulate_delivery) and not state_existed:
-                        if key not in state.observed:
-                            mark_observed(state, item, observed_at=current_time, key=key)
-                            baseline_observed += 1
-                        continue
-                    if key in state.observed or key in notified_keys:
-                        continue
-                    passes_cutoff = True
-                if passes_cutoff:
-                    candidates_list.append(item)
-            candidates = tuple(candidates_list)
-            source_stats.candidate_count = len(candidates)
-            matched_list = []
-            for item in candidates:
-                result = evaluate_item(
-                    item,
-                    source,
-                    filters,
-                    force_notify=source.id in filters.profile.force_notify_source_ids,
-                )
-                if result is None:
-                    if review_lookback_hours is not None:
-                        review_dropped.append((item, source, "global-filter"))
-                    continue
-                matched_list.append(result)
-            matched = tuple(matched_list)
-            source_stats.matched_count = len(matched)
-            unique, source_stats.duplicate_count = deduplicate_results(
-                matched, notified_keys=frozenset(seen_keys)
-            )
-            seen_keys.update(
-                result.article_key for result in unique if result.article_key is not None
-            )
-            all_results.extend(unique)
-        except FetchError as exc:
-            had_source_failure = True
-            source_stats.fetch_status = "failed"
-            source_stats.error = f"{type(exc).__name__}: {exc}"
-        _print_source_stats(source_stats, output)
+        processed = _process_source(
+            source,
+            filters,
+            state=state,
+            notified_keys=notified_keys,
+            seen_keys=frozenset(seen_keys),
+            current_time=current_time,
+            state_existed=state_existed,
+            review=review_lookback_hours is not None,
+            delivery_mode=deliver or simulate_delivery,
+            fetcher=fetcher,
+        )
+        stats.append(processed.stats)
+        all_results.extend(processed.matched)
+        review_dropped.extend(processed.review_dropped)
+        baseline_observed += processed.observed_count
+        seen_keys.update(
+            result.article_key
+            for result in processed.matched
+            if result.article_key is not None
+        )
+        had_source_failure |= processed.stats.fetch_status == "failed"
+        _print_source_stats(processed.stats, output)
 
     results = tuple(all_results)
     source_map = {source.id: source for source in sources.enabled_sources}
@@ -259,7 +356,9 @@ def run_dry_cycle(
         print("\n--- operational-alert-preview ---", file=output)
         operational_text = build_source_failure_alert(source_failures, source_map)
         if deliver:
-            operational_error = send_operational_alert(webhook_url or "", operational_text)
+            operational_error = send_operational_alert(
+                webhook_url or "", operational_text
+            )
             if operational_error is not None:
                 delivery_failed = True
                 print(f"operational alert failed: {operational_error}", file=output)
@@ -307,7 +406,9 @@ def run_dry_cycle(
             )
     elif review_lookback_hours is not None:
         for index, result in enumerate(ordered_results, start=1):
-            _print_review_candidate(index, result, source_map[result.item.source_id], output)
+            _print_review_candidate(
+                index, result, source_map[result.item.source_id], output
+            )
         for index, (item, source, reason) in enumerate(review_dropped, start=1):
             _print_review_dropped(index, item, source, reason, output)
     else:
@@ -364,7 +465,10 @@ def _print_review_candidate(
         file=output,
     )
     print(f"title={item.title}", file=output)
-    print(f"published={_format_datetime(item.published_at) if item.published_at else 'Unknown'}", file=output)
+    print(
+        f"published={_format_datetime(item.published_at) if item.published_at else 'Unknown'}",
+        file=output,
+    )
     print(f"why={' / '.join(result.why_matched)}", file=output)
     if item.url:
         print(f"url={item.url}", file=output)

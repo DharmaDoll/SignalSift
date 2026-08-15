@@ -187,10 +187,14 @@ def load_profile_sources_config(path: Path) -> tuple[SourcesConfig, "FilterConfi
 def _parse_sources_root(root: Mapping[str, Any]) -> SourcesConfig:
     source_rows = _require_sequence(root.get("sources"), "sources")
     sources = tuple(_parse_source(row, index) for index, row in enumerate(source_rows))
-    source_ids = [source.id for source in sources]
-    duplicates = sorted({source_id for source_id in source_ids if source_ids.count(source_id) > 1})
+    source_ids: set[str] = set()
+    duplicates: set[str] = set()
+    for source in sources:
+        if source.id in source_ids:
+            duplicates.add(source.id)
+        source_ids.add(source.id)
     if duplicates:
-        raise ConfigError(f"duplicate source id(s): {', '.join(duplicates)}")
+        raise ConfigError(f"duplicate source id(s): {', '.join(sorted(duplicates))}")
     return SourcesConfig(sources=sources)
 
 
@@ -199,7 +203,9 @@ def load_filter_config(path: Path) -> FilterConfig:
     return _parse_filter_root(root)
 
 
-def _parse_filter_root(root: Mapping[str, Any], *, allow_sources: bool = False) -> FilterConfig:
+def _parse_filter_root(
+    root: Mapping[str, Any], *, allow_sources: bool = False
+) -> FilterConfig:
     expected = {
         "profile",
         "notification",
@@ -211,7 +217,6 @@ def _parse_filter_root(root: Mapping[str, Any], *, allow_sources: bool = False) 
     }
     if allow_sources:
         expected.add("sources")
-    _reject_unknown(root, expected, "filter config")
     required = {
         "profile",
         "notification",
@@ -219,9 +224,7 @@ def _parse_filter_root(root: Mapping[str, Any], *, allow_sources: bool = False) 
         "rules",
         "source_priority_score",
     }
-    missing = sorted(required - root.keys())
-    if missing:
-        raise ConfigError(f"filter config: missing field(s): {', '.join(missing)}")
+    _validate_fields(root, allowed=expected, required=required, path="filter config")
 
     profile = _parse_profile(root["profile"])
     notification = _parse_notification(root["notification"])
@@ -249,10 +252,7 @@ def _parse_profile(value: Any) -> ProfileConfig:
     path = "profile"
     row = _require_mapping(value, path)
     expected = {"id", "webhook_env", "force_notify_source_ids"}
-    _reject_unknown(row, expected, path)
-    missing = sorted(expected - row.keys())
-    if missing:
-        raise ConfigError(f"{path}: missing field(s): {', '.join(missing)}")
+    _validate_fields(row, allowed=expected, required=expected, path=path)
     profile_id = _require_string(row["id"], f"{path}.id")
     if not SOURCE_ID_PATTERN.fullmatch(profile_id):
         raise ConfigError(f"{path}.id: must match {SOURCE_ID_PATTERN.pattern}")
@@ -302,11 +302,8 @@ def _parse_source(value: Any, index: int) -> SourceConfig:
         "source_filter",
         "notes",
     }
-    _reject_unknown(row, allowed, path)
     required = {"id", "name", "enabled", "type", "url", "priority"}
-    missing = sorted(required - row.keys())
-    if missing:
-        raise ConfigError(f"{path}: missing field(s): {', '.join(missing)}")
+    _validate_fields(row, allowed=allowed, required=required, path=path)
 
     source_id = _require_string(row["id"], f"{path}.id")
     if not SOURCE_ID_PATTERN.fullmatch(source_id):
@@ -328,7 +325,9 @@ def _parse_source(value: Any, index: int) -> SourceConfig:
 
     source_filter = None
     if "source_filter" in row:
-        source_filter = _parse_source_filter(row["source_filter"], f"{path}.source_filter")
+        source_filter = _parse_source_filter(
+            row["source_filter"], f"{path}.source_filter"
+        )
 
     return SourceConfig(
         id=source_id,
@@ -381,10 +380,7 @@ def _parse_notification(value: Any) -> NotificationConfig:
         "state_retention_days",
         "max_individual_messages_per_run",
     }
-    _reject_unknown(row, expected, path)
-    missing = sorted(expected - row.keys())
-    if missing:
-        raise ConfigError(f"{path}: missing field(s): {', '.join(missing)}")
+    _validate_fields(row, allowed=expected, required=expected, path=path)
     return NotificationConfig(
         threshold=_require_int(row["threshold"], f"{path}.threshold", minimum=1),
         initial_lookback_hours=_require_int(
@@ -404,10 +400,8 @@ def _parse_notification(value: Any) -> NotificationConfig:
 def _parse_negative_terms(value: Any) -> NegativeTermsConfig:
     path = "negative_terms"
     row = _require_mapping(value, path)
-    _reject_unknown(row, {"score", "terms", "mild"}, path)
-    missing = sorted({"score", "terms", "mild"} - row.keys())
-    if missing:
-        raise ConfigError(f"{path}: missing field(s): {', '.join(missing)}")
+    expected = {"score", "terms", "mild"}
+    _validate_fields(row, allowed=expected, required=expected, path=path)
     score = _require_int(row["score"], f"{path}.score", maximum=-1)
     terms = _parse_terms(row["terms"], f"{path}.terms")
     mild = _parse_term_score(row["mild"], f"{path}.mild", positive=False)
@@ -416,17 +410,17 @@ def _parse_negative_terms(value: Any) -> NegativeTermsConfig:
 
 def _parse_term_score(value: Any, path: str, *, positive: bool) -> TermScoreConfig:
     row = _require_mapping(value, path)
-    _reject_unknown(row, {"score", "terms"}, path)
-    missing = sorted({"score", "terms"} - row.keys())
-    if missing:
-        raise ConfigError(f"{path}: missing field(s): {', '.join(missing)}")
+    expected = {"score", "terms"}
+    _validate_fields(row, allowed=expected, required=expected, path=path)
     score = _require_int(
         row["score"],
         f"{path}.score",
         minimum=1 if positive else None,
         maximum=-1 if not positive else None,
     )
-    return TermScoreConfig(score=score, terms=_parse_terms(row["terms"], f"{path}.terms"))
+    return TermScoreConfig(
+        score=score, terms=_parse_terms(row["terms"], f"{path}.terms")
+    )
 
 
 def _parse_named_rules(value: Any, path: str) -> tuple[NamedRule, ...]:
@@ -448,18 +442,22 @@ def _parse_named_rules(value: Any, path: str) -> tuple[NamedRule, ...]:
         has_any = "any" in row
         has_groups = "all_groups" in row
         if has_any == has_groups:
-            raise ConfigError(f"{rule_path}: exactly one of 'any' or 'all_groups' is required")
+            raise ConfigError(
+                f"{rule_path}: exactly one of 'any' or 'all_groups' is required"
+            )
         any_terms = _parse_terms(row["any"], f"{rule_path}.any") if has_any else ()
-        groups = _parse_all_groups(row["all_groups"], f"{rule_path}.all_groups") if has_groups else ()
+        groups = (
+            _parse_all_groups(row["all_groups"], f"{rule_path}.all_groups")
+            if has_groups
+            else ()
+        )
         source_ids = (
             _parse_terms(row["source_ids"], f"{rule_path}.source_ids")
             if "source_ids" in row
             else ()
         )
         exclude_source_ids = (
-            _parse_terms(
-                row["exclude_source_ids"], f"{rule_path}.exclude_source_ids"
-            )
+            _parse_terms(row["exclude_source_ids"], f"{rule_path}.exclude_source_ids")
             if "exclude_source_ids" in row
             else ()
         )
@@ -511,9 +509,13 @@ def _parse_priority_scores(value: Any) -> tuple[tuple[int, int], ...]:
     return tuple(sorted(normalized.items()))
 
 
-def _parse_terms(value: Any, path: str, *, allow_empty: bool = False) -> tuple[str, ...]:
+def _parse_terms(
+    value: Any, path: str, *, allow_empty: bool = False
+) -> tuple[str, ...]:
     values = _require_sequence(value, path)
-    terms = tuple(_require_string(term, f"{path}[{index}]") for index, term in enumerate(values))
+    terms = tuple(
+        _require_string(term, f"{path}[{index}]") for index, term in enumerate(values)
+    )
     if not allow_empty and not terms:
         raise ConfigError(f"{path}: must not be empty")
     if len(set(terms)) != len(terms):
@@ -570,7 +572,12 @@ def _require_int(
 def _require_https_url(value: Any, path: str) -> str:
     url = _require_string(value, path)
     parsed = urlsplit(url)
-    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+    ):
         raise ConfigError(f"{path}: expected HTTPS URL without credentials")
     return url
 
@@ -579,3 +586,16 @@ def _reject_unknown(row: Mapping[Any, Any], allowed: set[str], path: str) -> Non
     unknown = sorted(str(key) for key in row if key not in allowed)
     if unknown:
         raise ConfigError(f"{path}: unknown field(s): {', '.join(unknown)}")
+
+
+def _validate_fields(
+    row: Mapping[Any, Any],
+    *,
+    allowed: set[str],
+    required: set[str],
+    path: str,
+) -> None:
+    _reject_unknown(row, allowed, path)
+    missing = sorted(required - row.keys())
+    if missing:
+        raise ConfigError(f"{path}: missing field(s): {', '.join(missing)}")
