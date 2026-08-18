@@ -49,21 +49,53 @@ FLATT_INDEX_HTML = (FIXTURES / "flatt_index.html").read_bytes()
 
 
 def test_cisa_adapter_registry_is_static_and_minimal() -> None:
-    assert tuple(ADAPTERS) == ("cisa_kev", "flatt_blog", "huntr_blog", "lakera_blog", "hiddenlayer_research")
+    assert tuple(ADAPTERS) == (
+        "cisa_kev",
+        "flatt_blog",
+        "huntr_blog",
+        "lakera_blog",
+        "hiddenlayer_research",
+    )
 
 
 @pytest.mark.parametrize(
-    ("adapter", "html", "title"),
+    ("adapter", "html", "title", "summary"),
     [
-        ("huntr_blog", '<a data-page-track-value="en-us:cards-list:AI RCE" href="/inside-ai-rce">AI RCE</a>', "AI RCE"),
-        ("lakera_blog", '<a href="/blog/prompt-injection"><div class="heading-style-h5-fn">Prompt Injection</div></a>', "Prompt Injection"),
-        ("hiddenlayer_research", '<div fs-list-field="title">Agent Attack</div><a href="/research/agent-attack"></a>', "Agent Attack"),
+        (
+            "huntr_blog",
+            '<a data-page-track-value="en-us:cards-list:AI RCE" href="/inside-ai-rce"><div class="excerpt">Model RCE</div>AI RCE</a>',
+            "AI RCE",
+            "Model RCE",
+        ),
+        (
+            "lakera_blog",
+            '<a href="/blog/prompt-injection"><div class="heading-style-h5-fn">Prompt Injection</div><p class="description">Indirect attack</p></a>',
+            "Prompt Injection",
+            "Indirect attack",
+        ),
+        (
+            "hiddenlayer_research",
+            '<div fs-list-field="title">Agent Attack</div><div fs-list-field="description">Credential theft</div><a href="/research/agent-attack"></a>',
+            "Agent Attack",
+            "Credential theft",
+        ),
     ],
 )
-def test_parse_html_research_index(adapter: str, html: str, title: str) -> None:
-    (item,) = parse_html_index(html.encode(), source_id=adapter, source_url="https://example.test/", adapter=adapter)
+def test_parse_html_research_index(
+    adapter: str, html: str, title: str, summary: str
+) -> None:
+    (item,) = parse_html_index(
+        html.encode(),
+        source_id=adapter,
+        source_url="https://example.test/",
+        adapter=adapter,
+    )
     assert item.title == title
-    assert item.url == f"https://example.test/{'inside-ai-rce' if adapter == 'huntr_blog' else 'blog/prompt-injection' if adapter == 'lakera_blog' else 'research/agent-attack'}"
+    assert item.summary == summary
+    assert (
+        item.url
+        == f"https://example.test/{'inside-ai-rce' if adapter == 'huntr_blog' else 'blog/prompt-injection' if adapter == 'lakera_blog' else 'research/agent-attack'}"
+    )
 
 
 def test_parse_cisa_kev_normalizes_security_fields() -> None:
@@ -102,7 +134,9 @@ def test_parse_flatt_index_uses_only_article_card_metadata() -> None:
     assert first.title == "keyv software supply-chain attack"
     assert first.url == "https://blog.flatt.tech/entry/keyv_compromise"
     assert first.published_at == datetime(2026, 8, 4, tzinfo=UTC)
-    assert first.summary == "Malicious npm packages stole credentials. Apply remediation…"
+    assert (
+        first.summary == "Malicious npm packages stole credentials. Apply remediation…"
+    )
     assert first.categories == ("Supply Chain",)
     assert first.external_ids == ()
     assert "event" not in first.summary
@@ -158,7 +192,9 @@ def test_parse_flatt_index_rejects_cross_origin_article_url() -> None:
 
 def test_fetch_source_dispatches_cisa_adapter() -> None:
     content = (FIXTURES / "cisa_kev.json").read_bytes()
-    transport = httpx.MockTransport(lambda request: httpx.Response(200, content=content))
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, content=content)
+    )
 
     items = fetch_source(cisa_source(), transport=transport)
 
@@ -174,7 +210,9 @@ def test_fetch_source_dispatches_cisa_adapter() -> None:
         ({"vulnerabilities": [{"cveID": "not-a-cve"}]}, "no valid entries"),
     ],
 )
-def test_parse_cisa_kev_rejects_untrusted_schema(document: object, message: str) -> None:
+def test_parse_cisa_kev_rejects_untrusted_schema(
+    document: object, message: str
+) -> None:
     with pytest.raises(AdapterError, match=message):
         parse_cisa_kev(json.dumps(document).encode(), source_id="cisa_kev")
 

@@ -132,12 +132,21 @@ def fetch_source(
     raise AdapterError(f"source {source.id!r} has no fetch implementation")
 
 
-def fetch_html_index(source: SourceConfig, *, transport: httpx.BaseTransport | None = None) -> tuple[NormalizedItem, ...]:
+def fetch_html_index(
+    source: SourceConfig, *, transport: httpx.BaseTransport | None = None
+) -> tuple[NormalizedItem, ...]:
     fetched = fetch_bytes(source.url, transport=transport)
-    return parse_html_index(fetched.content, source_id=source.id, source_url=source.url, adapter=source.adapter or "")
+    return parse_html_index(
+        fetched.content,
+        source_id=source.id,
+        source_url=source.url,
+        adapter=source.adapter or "",
+    )
 
 
-def parse_html_index(content: bytes, *, source_id: str, source_url: str, adapter: str) -> tuple[NormalizedItem, ...]:
+def parse_html_index(
+    content: bytes, *, source_id: str, source_url: str, adapter: str
+) -> tuple[NormalizedItem, ...]:
     parser = _SimpleResearchParser(adapter)
     try:
         parser.feed(content.decode("utf-8"))
@@ -148,11 +157,21 @@ def parse_html_index(content: bytes, *, source_id: str, source_url: str, adapter
         raise AdapterError(f"{adapter} HTML contains no article cards")
     items = tuple(
         NormalizedItem(
-            id=f"{source_id}:{urljoin(source_url, url)}", source_id=source_id, title=title, url=urljoin(source_url, url),
-            published_at=None, summary="", content="", categories=(), external_ids=(),
-            raw_metadata={"source_format": "html-index", "published_precision": "unknown"},
+            id=f"{source_id}:{urljoin(source_url, url)}",
+            source_id=source_id,
+            title=title,
+            url=urljoin(source_url, url),
+            published_at=None,
+            summary=summary,
+            content="",
+            categories=(),
+            external_ids=(),
+            raw_metadata={
+                "source_format": "html-index",
+                "published_precision": "unknown",
+            },
         )
-        for title, url in parser.entries
+        for title, url, summary in parser.entries
     )
     return items
 
@@ -161,11 +180,13 @@ class _SimpleResearchParser(HTMLParser):
     def __init__(self, adapter: str) -> None:
         super().__init__(convert_charrefs=True)
         self.adapter = adapter
-        self.entries: list[tuple[str, str]] = []
+        self.entries: list[tuple[str, str, str]] = []
         self._current_href: str | None = None
         self._current_title: list[str] = []
         self._collect_title = False
         self._titles: list[str] = []
+        self._collect_summary = False
+        self._summaries: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
@@ -176,33 +197,59 @@ class _SimpleResearchParser(HTMLParser):
             track_title = attributes.get("data-page-track-value") or ""
             if track_title:
                 self._current_title.append(track_title.rsplit(":", 1)[-1])
-        if tag in {"p", "div"} and (attributes.get("fs-list-field") == "title" or "heading-style-h5" in (attributes.get("class") or "")):
+        if tag in {"p", "div"} and (
+            attributes.get("fs-list-field") == "title"
+            or "heading-style-h5" in (attributes.get("class") or "")
+        ):
             self._collect_title = True
+        if tag in {"p", "div", "span"} and self._is_summary_container(attributes):
+            self._collect_summary = True
 
     def handle_data(self, data: str) -> None:
         text = " ".join(data.split())
         if not text:
             return
-        if self._current_href is not None:
+        if self._current_href is not None and not self._collect_summary:
             self._current_title.append(text)
         if self._collect_title:
             self._titles.append(text)
+        if self._collect_summary:
+            self._summaries.append(text)
 
     def handle_endtag(self, tag: str) -> None:
         if tag in {"p", "div"}:
             self._collect_title = False
+        if tag in {"p", "div", "span"}:
+            self._collect_summary = False
         if tag == "a" and self._current_href is not None:
             title = " ".join(dict.fromkeys(self._current_title)).strip()
             if self.adapter in {"lakera_blog", "hiddenlayer_research"} and self._titles:
                 title = self._titles.pop(0)
+            summary = " ".join(dict.fromkeys(self._summaries)).strip()
+            self._summaries.clear()
             if title:
-                self.entries.append((title, self._current_href))
+                self.entries.append((title, self._current_href, summary))
             self._current_href = None
+
+    @staticmethod
+    def _is_summary_container(attributes: dict[str, str | None]) -> bool:
+        field = (attributes.get("fs-list-field") or "").casefold()
+        classes = (attributes.get("class") or "").casefold().split()
+        return field in {"summary", "description", "excerpt"} or any(
+            token in {"summary", "description", "excerpt", "card-description"}
+            for token in classes
+        )
 
     def _is_article_href(self, href: str) -> bool:
         href = urlsplit(href).path
         if self.adapter == "huntr_blog":
-            return href.startswith("/huntr-") or href.startswith("/hunting-") or href.startswith("/inside-") or href.startswith("/pickle-") or href.startswith("/exposing-")
+            return (
+                href.startswith("/huntr-")
+                or href.startswith("/hunting-")
+                or href.startswith("/inside-")
+                or href.startswith("/pickle-")
+                or href.startswith("/exposing-")
+            )
         if self.adapter == "lakera_blog":
             return href.startswith("/blog/")
         return href.startswith("/research/")
@@ -231,7 +278,10 @@ def _normalize_cisa_entry(value: Any, *, source_id: str) -> NormalizedItem:
         for key, text in (
             ("vendor_project", vendor),
             ("product", product),
-            ("known_ransomware_campaign_use", _optional_text(value, "knownRansomwareCampaignUse")),
+            (
+                "known_ransomware_campaign_use",
+                _optional_text(value, "knownRansomwareCampaignUse"),
+            ),
             ("due_date", _optional_text(value, "dueDate")),
             ("notes", _optional_text(value, "notes")),
         )
@@ -339,9 +389,7 @@ def _normalize_flatt_entry(
     summary = _clean_text(" ".join(entry.summary))
     categories = tuple(
         dict.fromkeys(
-            cleaned
-            for value in entry.categories
-            if (cleaned := _clean_text(value))
+            cleaned for value in entry.categories if (cleaned := _clean_text(value))
         )
     )
     external_ids = tuple(
@@ -414,7 +462,8 @@ def _optional_text(value: Mapping[str, Any], key: str) -> str:
     if not isinstance(raw, str):
         raise TypeError(f"invalid {key}")
     without_controls = "".join(
-        " " if unicodedata.category(character) == "Cc" else character for character in raw
+        " " if unicodedata.category(character) == "Cc" else character
+        for character in raw
     )
     return " ".join(without_controls.split())
 

@@ -384,6 +384,20 @@ def test_ai_profile_selects_llm_researching_cves() -> None:
     ) is None
 
 
+def test_ai_profile_recognizes_common_coding_agent_tools() -> None:
+    for tool in ("GitHub Copilot", "Cursor", "Windsurf", "Cline", "OpenHands"):
+        result = evaluate_item(
+            item(
+                "aikido",
+                f"{tool} security flaw enables prompt injection",
+            ),
+            SOURCES["aikido"],
+            AI_SECURITY,
+        )
+
+        assert result is not None, tool
+
+
 def test_ai_agents_attacking_real_organizations_is_selected() -> None:
     result = evaluate_item(
         item(

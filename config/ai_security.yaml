@@ -37,6 +37,19 @@ rules:
           - Skills
           - Claude Code
           - Codex
+          - GitHub Copilot
+          - Copilot
+          - Cursor
+          - Windsurf
+          - Cline
+          - Roo Code
+          - Devin
+          - Gemini Code Assist
+          - Amazon Q Developer
+          - Tabnine
+          - Sourcegraph Cody
+          - OpenHands
+          - Aider
           - RAG
           - redteam
           - red team
