@@ -93,7 +93,10 @@ def test_review_dry_run_ignores_history_without_writing_state(tmp_path: Path) ->
     )
     assert "title=Malicious npm package steals credentials" in output.getvalue()
     assert "notifications=1" in output.getvalue()
-    assert "reason=global-filter source=Example Research" in output.getvalue()
+    assert (
+        "reason=global-filter:no-topic-match source=Example Research"
+        in output.getvalue()
+    )
     assert "title=General AI product announcement" in output.getvalue()
     assert "review_dropped=1" in output.getvalue()
     assert "state_changed=false slack_sent=false" in output.getvalue()
@@ -139,7 +142,11 @@ def test_normal_dry_run_respects_notification_history(tmp_path: Path) -> None:
         initial_cutoff_at=NOW - timedelta(hours=24),
         items={
             article_key(item): NotifiedRecord(
-                "example", item.title, item.url, item.published_at, NOW - timedelta(hours=1)
+                "example",
+                item.title,
+                item.url,
+                item.published_at,
+                NOW - timedelta(hours=1),
             )
         },
     )
@@ -210,7 +217,9 @@ def test_source_failure_does_not_stop_remaining_sources(tmp_path: Path) -> None:
     assert "source=failed fetch=failed" in output.getvalue()
     assert "source=example fetch=ok" in output.getvalue()
     assert "--- operational-alert-preview ---" in output.getvalue()
-    assert "Failed (`failed`): FetchError: simulated source failure" in output.getvalue()
+    assert (
+        "Failed (`failed`): FetchError: simulated source failure" in output.getvalue()
+    )
     assert "notifications=1" in output.getvalue()
     assert not (tmp_path / "missing.json").exists()
 
@@ -345,9 +354,14 @@ def test_ai_security_profile_filters_and_deduplicates_simulated_delivery(
     )
 
     assert first_exit_code == 0
-    assert set(load_state_for_test(state_path).items) == {article_key(relevant)}
+    assert set(load_state_for_test(state_path).items) == {
+        article_key(relevant),
+        article_key(generic_ai_news),
+    }
     assert "mode=simulated-delivery profile=ai_security" in first_output.getvalue()
-    assert "candidates=2 matched=1 duplicates=0 notifications=1" in first_output.getvalue()
+    assert (
+        "candidates=2 matched=2 duplicates=0 notifications=2" in first_output.getvalue()
+    )
     state_after_first_run = state_path.read_bytes()
 
     second_output = StringIO()
@@ -362,7 +376,7 @@ def test_ai_security_profile_filters_and_deduplicates_simulated_delivery(
     )
 
     assert second_exit_code == 0
-    assert "matched=1 duplicates=1 notifications=0" in second_output.getvalue()
+    assert "matched=2 duplicates=2 notifications=0" in second_output.getvalue()
     assert "state_changed=false" in second_output.getvalue()
     assert state_path.read_bytes() == state_after_first_run
 
@@ -377,9 +391,7 @@ def test_live_cycle_returns_failure_without_marking_failed_delivery(
         return SlackDeliveryReport(
             succeeded=(),
             failed=results,
-            failures=(
-                SlackFailure(results, "unexpected HTTP status: 404"),
-            ),
+            failures=(SlackFailure(results, "unexpected HTTP status: 404"),),
         )
 
     monkeypatch.setattr("signalsift.cli.send_notification_batches", deliver)
@@ -449,7 +461,9 @@ def test_live_cycle_sends_source_failure_alert_and_keeps_success_state(
     assert exit_code == 1
     assert len(operational) == 1
     assert operational[0][0] == "https://hooks.slack.test/services/test"
-    assert "Failed (`failed`): FetchError: simulated source failure" in operational[0][1]
+    assert (
+        "Failed (`failed`): FetchError: simulated source failure" in operational[0][1]
+    )
     saved = load_state_for_test(tmp_path / "notified.json")
     assert set(saved.items) == {article_key(candidate())}
 
@@ -471,9 +485,7 @@ def test_live_run_requires_profile_webhook(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_profiles_have_independent_default_state_paths() -> None:
-    args = build_parser().parse_args(
-        ["run", "--profile", "ai-security", "--dry-run"]
-    )
+    args = build_parser().parse_args(["run", "--profile", "ai-security", "--dry-run"])
 
     assert args.profile == "ai-security"
     assert args.state_path is None

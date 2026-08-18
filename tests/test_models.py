@@ -26,15 +26,14 @@ def write_yaml(tmp_path: Path, text: str) -> Path:
 def test_loads_repository_configuration() -> None:
     sources, _ = load_profile_sources_config(ROOT / "config/supply_chain_sources.yaml")
     _, security = load_profile_sources_config(ROOT / "config/supply_chain_sources.yaml")
-    ai_sources, ai_security = load_profile_sources_config(ROOT / "config/ai_security.yaml")
+    ai_sources, ai_security = load_profile_sources_config(
+        ROOT / "config/ai_security.yaml"
+    )
 
-    assert len(sources.enabled_sources) == 9
-    assert len(ai_sources.enabled_sources) == 12
+    assert len(sources.enabled_sources) == 11
+    assert len(ai_sources.enabled_sources) == 14
     assert "cisa_kev" not in {source.id for source in ai_sources.enabled_sources}
-    assert {
-        source.id
-        for source in ai_sources.enabled_sources
-    } >= {
+    assert {source.id for source in ai_sources.enabled_sources} >= {
         "ai_incident_database",
         "huntr",
         "lakera",
@@ -47,7 +46,9 @@ def test_loads_repository_configuration() -> None:
     assert sources.enabled_sources[3].adapter == "flatt_blog"
     for profile_sources in (sources, ai_sources):
         sans_isc = next(
-            source for source in profile_sources.enabled_sources if source.id == "sans_isc"
+            source
+            for source in profile_sources.enabled_sources
+            if source.id == "sans_isc"
         )
         assert sans_isc.type == "rss"
         assert sans_isc.priority == 2
@@ -55,24 +56,62 @@ def test_loads_repository_configuration() -> None:
         assert sans_isc.source_filter is not None
         assert sans_isc.source_filter.exclude == ("ISC Stormcast",)
     github = next(
-        source for source in sources.enabled_sources if source.id == "github_security_blog"
+        source
+        for source in sources.enabled_sources
+        if source.id == "github_security_blog"
     )
     assert not github.match_content
     assert github.url == "https://github.blog/security/feed/"
     google = next(
-        source for source in sources.enabled_sources if source.id == "google_threat_intel"
+        source
+        for source in sources.enabled_sources
+        if source.id == "google_threat_intel"
     )
     assert not google.match_content
     assert google.match_summary_chars == 500
+    wiz_ai = next(source for source in ai_sources.enabled_sources if source.id == "wiz")
+    assert wiz_ai.url == "https://www.wiz.io/feed/tag/ai/rss.xml"
+    wiz_data = next(
+        source
+        for source in ai_sources.enabled_sources
+        if source.id == "wiz_datasecurity"
+    )
+    assert wiz_data.url == "https://www.wiz.io/feed/tag/datasecurity/rss.xml"
+    wiz_security = next(
+        source for source in sources.enabled_sources if source.id == "wiz"
+    )
+    assert wiz_security.url == "https://www.wiz.io/feed/tag/security/rss.xml"
+    wiz_cirt = next(
+        source for source in sources.enabled_sources if source.id == "wiz_cirt"
+    )
+    assert wiz_cirt.url == "https://www.wiz.io/feed/tag/cirt/rss.xml"
+    assert (
+        next(
+            source for source in sources.enabled_sources if source.id == "wiz_research"
+        ).url
+        == "https://www.wiz.io/feed/tag/research/rss.xml"
+    )
+    assert (
+        next(
+            source
+            for source in ai_sources.enabled_sources
+            if source.id == "wiz_research"
+        ).url
+        == "https://www.wiz.io/feed/tag/research/rss.xml"
+    )
     assert security.profile.id == "supply_chain_vulnerability"
     assert (
-        security.profile.webhook_env
-        == "SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY"
+        security.profile.webhook_env == "SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY"
     )
-    assert security.profile.force_notify_source_ids == ("cisa_kev",)
+    assert security.profile.force_notify_source_ids == (
+        "cisa_kev",
+        "wiz",
+        "wiz_cirt",
+        "stepsecurity",
+    )
     assert ai_security.profile.id == "ai_security"
     assert ai_security.profile.webhook_env == "SLACK_WEBHOOK_URL_AI_SECURITY"
-    assert ai_security.profile.force_notify_source_ids == ()
+    assert ai_security.profile.force_notify_source_ids == ("wiz", "wiz_datasecurity")
     assert security.notification.threshold == 7
     assert security.negative_terms.score == -5
     assert security.negative_terms.mild.score == -3
@@ -93,7 +132,10 @@ def test_rejects_duplicate_source_ids_and_http_urls(
     tmp_path: Path, replacement: str, message: str
 ) -> None:
     source_id = "same" if "duplicate" in message else "source"
-    second_source = "" if "duplicate" not in message else f"""
+    second_source = (
+        ""
+        if "duplicate" not in message
+        else f"""
   - id: same
     name: Second
     enabled: true
@@ -101,6 +143,7 @@ def test_rejects_duplicate_source_ids_and_http_urls(
     url: https://example.test/second
     priority: 1
 """
+    )
     path = write_yaml(
         tmp_path,
         f"""sources:
@@ -170,7 +213,9 @@ def test_rejects_invalid_notification_boundary(tmp_path: Path) -> None:
 
 def test_rejects_non_positive_summary_match_limit(tmp_path: Path) -> None:
     text = (ROOT / "config/supply_chain_sources.yaml").read_text(encoding="utf-8")
-    path = write_yaml(tmp_path, text.replace("match_summary_chars: 500", "match_summary_chars: 0"))
+    path = write_yaml(
+        tmp_path, text.replace("match_summary_chars: 500", "match_summary_chars: 0")
+    )
 
     with pytest.raises(ConfigError, match="match_summary_chars: must be >= 1"):
         load_profile_sources_config(path)

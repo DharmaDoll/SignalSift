@@ -3,7 +3,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from signalsift.filter import evaluate_item, item_match_text, passes_source_filter, term_matches
+from signalsift.filter import (
+    evaluate_item,
+    item_match_text,
+    passes_source_filter,
+    term_matches,
+)
 from signalsift.models import (
     NormalizedItem,
     SourceConfig,
@@ -19,6 +24,12 @@ SOURCES = {
     for source in load_profile_sources_config(
         ROOT / "config/supply_chain_sources.yaml"
     )[0].sources
+}
+AI_SOURCES = {
+    source.id: source
+    for source in load_profile_sources_config(ROOT / "config/ai_security.yaml")[
+        0
+    ].sources
 }
 
 
@@ -45,10 +56,10 @@ def test_source_filters_remove_only_publication_specific_noise() -> None:
     assert not passes_source_filter(
         item("flatt", "社員インタビュー: npm maintainer"), SOURCES["flatt"]
     )
-    assert not passes_source_filter(
+    assert passes_source_filter(
         item("wiz", "Supply chain webinar about a malicious package"), SOURCES["wiz"]
     )
-    assert not passes_source_filter(
+    assert passes_source_filter(
         item("stepsecurity", "Customer story: securing npm"), SOURCES["stepsecurity"]
     )
     assert not passes_source_filter(
@@ -57,7 +68,7 @@ def test_source_filters_remove_only_publication_specific_noise() -> None:
     assert passes_source_filter(
         item("flatt", "npmパッケージ侵害の対応指針"), SOURCES["flatt"]
     )
-    assert not passes_source_filter(
+    assert passes_source_filter(
         item("stepsecurity", "2026 Mid-Year Update: Our Biggest Year Yet"),
         SOURCES["stepsecurity"],
     )
@@ -134,8 +145,12 @@ def test_google_threat_intelligence_matches_only_summary_lead() -> None:
 
 
 def test_security_profile_selects_short_npm_or_pypi_context() -> None:
-    npm = evaluate_item(item("flatt", "npm ecosystem incident"), SOURCES["flatt"], SECURITY)
-    pypi = evaluate_item(item("aikido", "PyPI package report"), SOURCES["aikido"], SECURITY)
+    npm = evaluate_item(
+        item("flatt", "npm ecosystem incident"), SOURCES["flatt"], SECURITY
+    )
+    pypi = evaluate_item(
+        item("aikido", "PyPI package report"), SOURCES["aikido"], SECURITY
+    )
 
     assert npm is not None
     assert npm.score == 8
@@ -323,6 +338,7 @@ def test_sans_isc_excludes_stormcast_and_selects_profile_signals() -> None:
     assert ai_result is not None
     assert ai_result.score == 7
 
+
 def test_ai_profile_rejects_generic_security_without_ai_context() -> None:
     metabase = evaluate_item(
         item(
@@ -377,11 +393,14 @@ def test_ai_profile_selects_llm_researching_cves() -> None:
     assert result is not None
     assert "llm" in result.why_matched
     assert "cves" in result.why_matched
-    assert evaluate_item(
-        item("wiz", "Critical authentication bypass vulnerability"),
-        SOURCES["wiz"],
-        AI_SECURITY,
-    ) is None
+    assert (
+        evaluate_item(
+            item("wiz", "Critical authentication bypass vulnerability"),
+            SOURCES["wiz"],
+            AI_SECURITY,
+        )
+        is None
+    )
 
 
 def test_ai_profile_recognizes_common_coding_agent_tools() -> None:
@@ -396,6 +415,17 @@ def test_ai_profile_recognizes_common_coding_agent_tools() -> None:
         )
 
         assert result is not None, tool
+
+
+def test_ai_profile_trusted_research_source_can_match_strong_security_title() -> None:
+    result = evaluate_item(
+        item("huntr", "Remote Code Execution via Keras Models"),
+        AI_SOURCES["huntr"],
+        AI_SECURITY,
+    )
+
+    assert result is not None
+    assert "trusted-ai-security-research" in result.why_matched
 
 
 def test_ai_agents_attacking_real_organizations_is_selected() -> None:
@@ -445,7 +475,7 @@ def test_force_notify_is_selected_by_profile_not_source_model() -> None:
     assert result is not None
     assert result.matched_topic == "forced"
     assert result.why_matched[-1] == "force-notify:cisa_kev"
-    assert AI_SECURITY.profile.force_notify_source_ids == ()
+    assert AI_SECURITY.profile.force_notify_source_ids == ("wiz", "wiz_datasecurity")
 
 
 def test_cisa_kev_category_explains_urgency() -> None:
@@ -459,9 +489,7 @@ def test_cisa_kev_category_explains_urgency() -> None:
         external_ids=("CVE-2026-12345",),
     )
 
-    result = evaluate_item(
-        kev_item, SOURCES["cisa_kev"], SECURITY, force_notify=True
-    )
+    result = evaluate_item(kev_item, SOURCES["cisa_kev"], SECURITY, force_notify=True)
 
     assert result is not None
     assert result.matched_topic == "supply-chain-vulnerability"

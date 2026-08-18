@@ -176,6 +176,150 @@ def parse_html_index(
     return items
 
 
+@dataclass(slots=True)
+class _StepSecurityEntry:
+    url: str | None = None
+    title: list[str] = field(default_factory=list)
+    summary: list[str] = field(default_factory=list)
+    category: list[str] = field(default_factory=list)
+    published_text: list[str] = field(default_factory=list)
+
+
+def fetch_stepsecurity_threat_intel(
+    source: SourceConfig,
+    *,
+    transport: httpx.BaseTransport | None = None,
+) -> tuple[NormalizedItem, ...]:
+    if source.type != "html" or source.adapter != "stepsecurity_threat_intel":
+        raise AdapterError(
+            f"source {source.id!r} is not configured for stepsecurity_threat_intel"
+        )
+    fetched = fetch_bytes(source.url, transport=transport)
+    return parse_stepsecurity_threat_intel(
+        fetched.content,
+        source_id=source.id,
+        source_url=source.url,
+    )
+
+
+def parse_stepsecurity_threat_intel(
+    content: bytes,
+    *,
+    source_id: str,
+    source_url: str,
+) -> tuple[NormalizedItem, ...]:
+    try:
+        parser = _StepSecurityThreatIntelParser()
+        parser.feed(content.decode("utf-8"))
+        parser.close()
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise AdapterError(f"invalid StepSecurity HTML: {type(exc).__name__}") from exc
+
+    items: list[NormalizedItem] = []
+    for entry in parser.entries:
+        title = _clean_text(" ".join(entry.title))
+        url = _same_origin_https_url(entry.url, source_url)
+        if not title or not url or not entry.category:
+            continue
+        try:
+            published_at = datetime.strptime(
+                _clean_text(" ".join(entry.published_text)), "%B %d, %Y"
+            ).replace(tzinfo=UTC)
+        except ValueError:
+            published_at = None
+        items.append(
+            NormalizedItem(
+                id=f"{source_id}:{url}",
+                source_id=source_id,
+                title=title,
+                url=url,
+                published_at=published_at,
+                summary=_clean_text(" ".join(entry.summary)),
+                content="",
+                categories=("Threat Intel",),
+                external_ids=tuple(
+                    dict.fromkeys(
+                        match.upper()
+                        for match in EXTERNAL_ID_PATTERN.findall(
+                            " ".join((*entry.title, *entry.summary))
+                        )
+                    )
+                ),
+                raw_metadata={
+                    "source_format": "stepsecurity-threat-intel-html",
+                    "published_precision": "date",
+                },
+            )
+        )
+    if not items:
+        raise AdapterError("StepSecurity Threat Intel page contains no valid entries")
+    return tuple(items)
+
+
+class _StepSecurityThreatIntelParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.entries: list[_StepSecurityEntry] = []
+        self._entry: _StepSecurityEntry | None = None
+        self._entry_depth = 0
+        self._capture: str | None = None
+        self._buffer: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        classes = set((attributes.get("class") or "").split())
+        if self._entry is None and tag == "div" and "w-dyn-item" in classes:
+            self._entry = _StepSecurityEntry()
+            self._entry_depth = 1
+            return
+        if self._entry is None:
+            return
+        if tag == "div":
+            self._entry_depth += 1
+        if tag == "a" and attributes.get("href", "").startswith("/blog/"):
+            self._entry.url = attributes["href"]
+        capture = self._capture_for(tag, classes)
+        if capture:
+            self._capture = capture
+            self._buffer = []
+
+    def handle_data(self, data: str) -> None:
+        text = " ".join(data.split())
+        if self._capture and text:
+            self._buffer.append(text)
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._entry is None:
+            return
+        if self._capture and tag in {"h2", "p", "div"}:
+            values = getattr(self._entry, self._capture)
+            values.extend(self._buffer)
+            self._capture = None
+            self._buffer = []
+        if tag == "div":
+            self._entry_depth -= 1
+            if self._entry_depth == 0:
+                if any(
+                    value.casefold() == "threat intel" for value in self._entry.category
+                ):
+                    self.entries.append(self._entry)
+                self._entry = None
+
+    @staticmethod
+    def _capture_for(tag: str, classes: set[str]) -> str | None:
+        if "card-blog-post_heading" in classes:
+            return "title"
+        if "card-blog-post_preview" in classes:
+            return "summary"
+        if "card-blog-post_date" in classes:
+            return "published_text"
+        if "card-blog-post_category" in classes:
+            return "category"
+        if "pill_text" in classes:
+            return "category"
+        return None
+
+
 class _SimpleResearchParser(HTMLParser):
     def __init__(self, adapter: str) -> None:
         super().__init__(convert_charrefs=True)
@@ -474,4 +618,5 @@ ADAPTERS: Mapping[str, Adapter] = {
     "huntr_blog": fetch_html_index,
     "lakera_blog": fetch_html_index,
     "hiddenlayer_research": fetch_html_index,
+    "stepsecurity_threat_intel": fetch_stepsecurity_threat_intel,
 }

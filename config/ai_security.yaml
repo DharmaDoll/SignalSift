@@ -3,7 +3,9 @@
 profile:
   id: ai_security
   webhook_env: SLACK_WEBHOOK_URL_AI_SECURITY
-  force_notify_source_ids: []
+  force_notify_source_ids:
+    - wiz
+    - wiz_datasecurity
 
 notification:
   threshold: 7
@@ -31,6 +33,19 @@ rules:
     all_groups:
       - any:
           - LLM
+          - AI agent
+          - AI agents
+          - AI assistant
+          - AI assistants
+          - agentic AI
+          - generative AI
+          - GenAI
+          - machine learning
+          - ML model
+          - coding agent
+          - coding agents
+          - coding assistant
+          - coding assistants
           - agentic
           - MCP
           - Model Context Protocol
@@ -70,6 +85,19 @@ rules:
           - unauthenticated
           - command execution
           - malicious
+          - compromise
+          - compromised
+          - breach
+          - breached
+          - breaches
+          - intrusion
+          - exfiltration
+          - credential theft
+          - model theft
+          - model poisoning
+          - jailbreak
+          - deserialization
+          - privilege escalation
           - "攻撃"
           - "窃取"
 
@@ -98,6 +126,28 @@ rules:
           - attack
           - exploit
           - vulnerability
+
+  trusted_ai_security_research:
+    score: 5
+    source_ids:
+      - huntr
+      - lakera
+      - hiddenlayer
+    any:
+      - CVE
+      - vulnerability
+      - vulnerabilities
+      - exploit
+      - exploited
+      - attack
+      - injection
+      - poisoning
+      - credential theft
+      - remote code execution
+      - RCE
+      - malicious
+      - pre-auth
+      - deserialization
 
 source_priority_score:
   1: 1
@@ -143,13 +193,29 @@ sources:
     name: Wiz
     enabled: true
     type: rss
-    url: https://www.wiz.io/feed/rss.xml
+    url: https://www.wiz.io/feed/tag/ai/rss.xml
+    priority: 3
+    notes: Wiz AI-tagged research, vulnerabilities, and MCP security.
+
+  - id: wiz_datasecurity
+    name: Wiz Data Security
+    enabled: true
+    type: rss
+    url: https://www.wiz.io/feed/tag/datasecurity/rss.xml
+    priority: 3
+    notes: Wiz data-security-tagged research and incidents.
+
+  - id: wiz_research
+    name: Wiz Research
+    enabled: true
+    type: rss
+    url: https://www.wiz.io/feed/tag/research/rss.xml
     priority: 3
     source_filter:
       exclude:
         - webinar
         - customer story
-    notes: Cloud, vulnerability, supply-chain, AI and MCP research.
+    notes: Wiz research-tagged articles evaluated by the normal AI Security filters.
 
   - id: google_threat_intel
     name: Google Threat Intelligence / Mandiant
@@ -202,12 +268,20 @@ sources:
     type: rss
     url: https://www.microsoft.com/en-us/security/blog/feed/
     priority: 3
+    match_content: false
+    match_summary_chars: 1000
     source_filter:
       include_any:
         - AI security
         - AI red team
         - AI attack
         - AI vulnerability
+        - AI agent
+        - AI agents
+        - coding agent
+        - coding agents
+        - agentic AI
+        - Copilot
         - LLM security
         - prompt injection
         - agent security

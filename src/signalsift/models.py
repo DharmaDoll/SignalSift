@@ -13,7 +13,14 @@ import yaml
 
 SOURCE_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 BUILTIN_ADAPTERS = frozenset(
-    {"cisa_kev", "flatt_blog", "huntr_blog", "lakera_blog", "hiddenlayer_research"}
+    {
+        "cisa_kev",
+        "flatt_blog",
+        "huntr_blog",
+        "lakera_blog",
+        "hiddenlayer_research",
+        "stepsecurity_threat_intel",
+    }
 )
 
 

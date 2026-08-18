@@ -4,7 +4,13 @@ import re
 import unicodedata
 from collections.abc import Iterable
 
-from signalsift.models import EvaluationResult, FilterConfig, NamedRule, NormalizedItem, SourceConfig
+from signalsift.models import (
+    EvaluationResult,
+    FilterConfig,
+    NamedRule,
+    NormalizedItem,
+    SourceConfig,
+)
 
 
 ASCII_WORD_CHARACTER = r"a-z0-9"
@@ -79,6 +85,7 @@ def evaluate_item(
     config: FilterConfig,
     *,
     force_notify: bool = False,
+    drop_reason: list[str] | None = None,
 ) -> EvaluationResult | None:
     """Return an explainable result only when an item should be selected."""
 
@@ -131,7 +138,13 @@ def evaluate_item(
         score += config.watch_terms.score
 
     forced = force_notify
-    if not forced and (not topic_matches or score < config.notification.threshold):
+    if not forced and not topic_matches:
+        if drop_reason is not None:
+            drop_reason.append("no-topic-match")
+        return None
+    if not forced and score < config.notification.threshold:
+        if drop_reason is not None:
+            drop_reason.append("score-below-threshold")
         return None
 
     reasons: list[str] = []
@@ -149,7 +162,9 @@ def evaluate_item(
     if forced:
         reasons.append(f"force-notify:{source.id}")
 
-    matched_topic = _reason_name(topic_matches[0][0].name) if topic_matches else "forced"
+    matched_topic = (
+        _reason_name(topic_matches[0][0].name) if topic_matches else "forced"
+    )
     return EvaluationResult(
         item=item,
         score=score,
@@ -182,14 +197,20 @@ def _first_matching_term(text: str, terms: Iterable[str]) -> str | None:
 
 
 def _is_ascii_word_or_phrase(term: str) -> bool:
-    return all(character.isascii() and (character.isalnum() or character.isspace()) for character in term)
+    return all(
+        character.isascii() and (character.isalnum() or character.isspace())
+        for character in term
+    )
 
 
 def _is_ascii_prefix_term(term: str) -> bool:
     return (
         len(term) > 1
         and not term[-1].isalnum()
-        and all(character.isascii() and (character.isalnum() or character in "-_./") for character in term)
+        and all(
+            character.isascii() and (character.isalnum() or character in "-_./")
+            for character in term
+        )
     )
 
 

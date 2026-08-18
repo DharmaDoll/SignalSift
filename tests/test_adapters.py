@@ -14,6 +14,7 @@ from signalsift.adapters import (
     parse_cisa_kev,
     parse_flatt_blog,
     parse_html_index,
+    parse_stepsecurity_threat_intel,
 )
 from signalsift.models import SourceConfig
 
@@ -55,6 +56,7 @@ def test_cisa_adapter_registry_is_static_and_minimal() -> None:
         "huntr_blog",
         "lakera_blog",
         "hiddenlayer_research",
+        "stepsecurity_threat_intel",
     )
 
 
@@ -96,6 +98,35 @@ def test_parse_html_research_index(
         item.url
         == f"https://example.test/{'inside-ai-rce' if adapter == 'huntr_blog' else 'blog/prompt-injection' if adapter == 'lakera_blog' else 'research/agent-attack'}"
     )
+
+
+def test_parse_stepsecurity_threat_intel_selects_category_cards() -> None:
+    html = """
+    <div role="listitem" class="w-dyn-item">
+      <div class="card-blog-post_category"><div class="pill_text">Threat Intel</div></div>
+      <h2 class="card-blog-post_heading">ChainDrop npm Worm</h2>
+      <p class="card-blog-post_preview">A malicious package campaign.</p>
+      <p class="card-blog-post_date">August 4, 2026</p>
+      <a href="/blog/chaindrop-npm-worm">Read</a>
+    </div>
+    <div role="listitem" class="w-dyn-item">
+      <div class="card-blog-post_category"><div class="pill_text">Resources</div></div>
+      <h2 class="card-blog-post_heading">Security resources</h2>
+      <a href="/blog/resources">Read</a>
+    </div>
+    """
+
+    (item,) = parse_stepsecurity_threat_intel(
+        html.encode(),
+        source_id="stepsecurity",
+        source_url="https://www.stepsecurity.io/blog?category=Threat+Intel",
+    )
+
+    assert item.title == "ChainDrop npm Worm"
+    assert item.summary == "A malicious package campaign."
+    assert item.categories == ("Threat Intel",)
+    assert item.published_at == datetime(2026, 8, 4, tzinfo=UTC)
+    assert item.url == "https://www.stepsecurity.io/blog/chaindrop-npm-worm"
 
 
 def test_parse_cisa_kev_normalizes_security_fields() -> None:

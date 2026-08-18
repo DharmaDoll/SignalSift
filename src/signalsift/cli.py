@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -249,15 +250,18 @@ def _process_source(
         stats.candidate_count = len(candidates)
         matched: list[EvaluationResult] = []
         for item in candidates:
+            drop_reason: list[str] = []
             result = evaluate_item(
                 item,
                 source,
                 filters,
                 force_notify=source.id in filters.profile.force_notify_source_ids,
+                drop_reason=drop_reason,
             )
             if result is None:
                 if review:
-                    review_dropped.append((item, source, "global-filter"))
+                    reason = drop_reason[0] if drop_reason else "unknown"
+                    review_dropped.append((item, source, f"global-filter:{reason}"))
                 continue
             matched.append(result)
 
@@ -415,6 +419,14 @@ def run_dry_cycle(
         for index, batch in enumerate(batches, start=1):
             print(f"\n--- notification-preview {index}/{len(batches)} ---", file=output)
             print(batch.text, file=output)
+    review_reason_counts = Counter(reason for _, _, reason in review_dropped)
+    review_reason_summary = (
+        ",".join(
+            f"{reason}:{count}"
+            for reason, count in sorted(review_reason_counts.items())
+        )
+        or "none"
+    )
     print(
         f"summary sources={len(stats)} failures={sum(s.fetch_status == 'failed' for s in stats)} "
         f"fetched={sum(s.fetched_count for s in stats)} "
@@ -426,6 +438,7 @@ def run_dry_cycle(
         f"slack_sent={_format_bool(deliver and not delivery_failed)}",
         f"simulated_delivery={_format_bool(simulate_delivery)}",
         f"review_dropped={len(review_dropped)}",
+        f"review_dropped_reasons={review_reason_summary}",
         file=output,
     )
     return 1 if had_source_failure or delivery_failed else 0

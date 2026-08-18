@@ -8,6 +8,9 @@ profile:
   webhook_env: SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY
   force_notify_source_ids:
     - cisa_kev
+    - wiz
+    - wiz_cirt
+    - stepsecurity
 
 notification:
   threshold: 7
@@ -173,32 +176,38 @@ sources:
     name: Wiz
     enabled: true
     type: rss
-    url: https://www.wiz.io/feed/rss.xml
+    url: https://www.wiz.io/feed/tag/security/rss.xml
+    priority: 3
+    notes: Wiz security-tagged cloud, vulnerability, and supply-chain research.
+
+  - id: wiz_cirt
+    name: Wiz CIRT
+    enabled: true
+    type: rss
+    url: https://www.wiz.io/feed/tag/cirt/rss.xml
+    priority: 3
+    notes: Wiz CIRT incident-response and threat research.
+
+  - id: wiz_research
+    name: Wiz Research
+    enabled: true
+    type: rss
+    url: https://www.wiz.io/feed/tag/research/rss.xml
     priority: 3
     source_filter:
       exclude:
         - webinar
         - customer story
-        - BOD 26-04
-        - Verizon DBIR
-        - AI vulnerability researcher
-    notes: Cloud, vulnerability, supply-chain, AI and MCP research.
+    notes: Wiz research-tagged articles evaluated by the normal Supply Chain filters.
 
   - id: stepsecurity
     name: StepSecurity
     enabled: true
-    type: rss
-    url: https://www.stepsecurity.io/blog/rss.xml
+    type: html
+    url: https://www.stepsecurity.io/blog?category=Threat+Intel
+    adapter: stepsecurity_threat_intel
     priority: 3
-    source_filter:
-      exclude:
-        - webinar
-        - customer story
-        - mid-year update
-        - control which package registries
-        - find unused, stale
-        - runtime security for third-party
-    notes: High-value source for active software supply-chain incidents.
+    notes: StepSecurity Threat Intel category; category membership is trusted and bypasses profile filtering.
 
   - id: aikido
     name: Aikido Security
