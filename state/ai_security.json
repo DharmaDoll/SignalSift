@@ -1,6 +1,14 @@
 {
   "initial_cutoff_at": "2026-08-13T05:43:48.398735Z",
-  "items": {},
+  "items": {
+    "e0c46189a52e02d8db2cc72a500c8e5b19251e8aa12e5b4a88fb31ad13f7eaef": {
+      "notified_at": "2026-08-18T06:07:33.499645Z",
+      "published_at": "2026-08-17T14:00:00Z",
+      "source": "wiz",
+      "title": "Wiz Red Agent Finds Its Way Into Snowflake’s Internal Jira Through a Flaw in a GitHub Copilot–Assisted PR",
+      "url": "https://www.wiz.io/blog/red-agent-snowflake-copilot-cicd-bug"
+    }
+  },
   "observed": {
     "0763dd26465e43fac40bef68768d859047fab92473936ca29a31f5b0cb5b41d2": {
       "observed_at": "2026-08-14T05:43:48.398735Z",
