@@ -1,6 +1,41 @@
 {
   "initial_cutoff_at": "2026-08-13T05:43:48.398735Z",
   "items": {
+    "11e645c7b417d588d8ff9cf4d961c414afa05b9d18de0e30be70598e023d4b65": {
+      "notified_at": "2026-08-18T23:02:08.498675Z",
+      "published_at": "2026-08-18T14:00:00Z",
+      "source": "google_threat_intel",
+      "title": "Staying Ahead of Adversarial AI Through Agentic Source Code Review",
+      "url": "https://cloud.google.com/blog/topics/threat-intelligence/staying-ahead-of-adversarial-ai-through-agentic-source-code-review/"
+    },
+    "243afd079a125406a8174142e9ddd6c74985feb7f3bf9b9e00bcd3a7c084e25b": {
+      "notified_at": "2026-08-18T23:02:08.498675Z",
+      "published_at": "2026-08-18T10:00:00Z",
+      "source": "adversa_ai",
+      "title": "Top 10 zero-click attacks against AI agents",
+      "url": "https://adversa.ai/blog/top-10-zero-click-attacks-against-ai-agents/"
+    },
+    "8ee7251d4754c7888ce2329ec59e9cbcd04f9abeca7507a2b2352e3360bcf8f5": {
+      "notified_at": "2026-08-18T23:02:08.498675Z",
+      "published_at": "2026-08-14T12:19:18Z",
+      "source": "wiz",
+      "title": "Securing Data in the AI era",
+      "url": "https://www.wiz.io/blog/securing-data-in-the-ai-era"
+    },
+    "aef2c4d57b05cb1e108069dff8c66f3c16758f2fb4443e1bd14e7ec87f6b573d": {
+      "notified_at": "2026-08-18T23:02:08.498675Z",
+      "published_at": "2026-08-15T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "AI assistant hacks gym website in first known Australian autonomous cyber attack",
+      "url": "https://www.abc.net.au/news/2026-08-10/ai-assistant-hacks-gym-website-aus-cyber-attack/107007986"
+    },
+    "de39eb1dd4471d453a08ea17c062b094ece40a3675456b2e999b71ecbbbe2de0": {
+      "notified_at": "2026-08-18T23:02:08.498675Z",
+      "published_at": "2026-08-17T12:23:13Z",
+      "source": "wiz",
+      "title": "The Closed Loop Remediation Playbook with Wiz",
+      "url": "https://www.wiz.io/blog/wiz-remediation-playbook"
+    },
     "e0c46189a52e02d8db2cc72a500c8e5b19251e8aa12e5b4a88fb31ad13f7eaef": {
       "notified_at": "2026-08-18T06:07:33.499645Z",
       "published_at": "2026-08-17T14:00:00Z",
