@@ -323,10 +323,12 @@ def test_ai_security_profile_filters_and_deduplicates_simulated_delivery(
         raise AssertionError("Slack must not be called")
 
     monkeypatch.setattr("signalsift.cli.send_notification_batches", unexpected_delivery)
-    wiz = next(source for source in AI_SOURCES.enabled_sources if source.id == "wiz")
+    wiz = next(
+        source for source in AI_SOURCES.enabled_sources if source.id == "wiz_ai"
+    )
     relevant = NormalizedItem(
         id="ai-security-1",
-        source_id="wiz",
+        source_id="wiz_ai",
         title="MCP authorization bypass vulnerability enables credential theft",
         url="https://example.test/mcp-authorization-bypass",
         published_at=NOW - timedelta(hours=2),
@@ -334,7 +336,7 @@ def test_ai_security_profile_filters_and_deduplicates_simulated_delivery(
     )
     generic_ai_news = NormalizedItem(
         id="ai-news-1",
-        source_id="wiz",
+        source_id="wiz_ai",
         title="New AI agent product announcement",
         url="https://example.test/ai-product",
         published_at=NOW - timedelta(hours=1),

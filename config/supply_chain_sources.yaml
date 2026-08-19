@@ -8,7 +8,7 @@ profile:
   webhook_env: SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY
   force_notify_source_ids:
     - cisa_kev
-    - wiz
+    - wiz_security
     - wiz_cirt
     - stepsecurity
 
@@ -172,8 +172,8 @@ sources:
         - "サービス紹介"
     notes: Top-page excerpts avoid full-article noise in the RSS description.
 
-  - id: wiz
-    name: Wiz
+  - id: wiz_security
+    name: Wiz Security
     enabled: true
     type: rss
     url: https://www.wiz.io/feed/tag/security/rss.xml

@@ -245,7 +245,7 @@ Supply Chain Vulnerability Profileの有効な情報源は以下の9件である
 | `sans_isc` | RSS | 2 | 実観測された攻撃、脆弱性、技術分析 |
 | `cisa_kev` | JSON + `cisa_kev` | 3 | 悪用確認済み脆弱性 |
 | `flatt` | HTML + `flatt_blog` | 3 | 国内AppSec、サプライチェーン分析 |
-| `wiz` | RSS | 3 | クラウド、脆弱性、AI/MCP研究 |
+| `wiz_security` | RSS | 3 | Supply Chain向けWiz Securityタグのクラウド、脆弱性、侵害研究 |
 | `stepsecurity` | RSS | 3 | GitHub Actions、パッケージ侵害 |
 | `aikido` | RSS | 2 | OSSマルウェア、パッケージ侵害 |
 | `google_threat_intel` | RSS | 3 | 大規模攻撃、悪用、脅威研究 |
@@ -646,7 +646,7 @@ RSS 1.0/RDFの`rdf:about`はentry IDとして扱う。同一文書内の別項�
   "initial_cutoff_at": "2026-08-09T01:23:45Z",
   "items": {
     "<article_key>": {
-      "source": "wiz",
+      "source": "wiz_security",
       "title": "...",
       "url": "https://...",
       "published_at": "2026-08-10T00:00:00Z",

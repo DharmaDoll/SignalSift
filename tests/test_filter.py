@@ -57,7 +57,8 @@ def test_source_filters_remove_only_publication_specific_noise() -> None:
         item("flatt", "社員インタビュー: npm maintainer"), SOURCES["flatt"]
     )
     assert passes_source_filter(
-        item("wiz", "Supply chain webinar about a malicious package"), SOURCES["wiz"]
+        item("wiz_security", "Supply chain webinar about a malicious package"),
+        SOURCES["wiz_security"],
     )
     assert passes_source_filter(
         item("stepsecurity", "Customer story: securing npm"), SOURCES["stepsecurity"]
@@ -283,8 +284,8 @@ def test_flatt_index_excerpt_is_selected_without_full_article_noise() -> None:
 
 def test_security_profile_selects_ordinary_cve_for_recall() -> None:
     result = evaluate_item(
-        item("wiz", "CVE-2026-10000 affects Example Server"),
-        SOURCES["wiz"],
+        item("wiz_security", "CVE-2026-10000 affects Example Server"),
+        SOURCES["wiz_security"],
         SECURITY,
     )
 
@@ -309,8 +310,8 @@ def test_jpcert_uses_narrow_rule_without_broad_cve_terms() -> None:
         SECURITY,
     )
     other_source = evaluate_item(
-        item("wiz", "CVE-2026-10000 affects Example Server"),
-        SOURCES["wiz"],
+        item("wiz_security", "CVE-2026-10000 affects Example Server"),
+        SOURCES["wiz_security"],
         SECURITY,
     )
 
@@ -346,8 +347,8 @@ def test_security_marketing_penalty_still_drops_article() -> None:
 
 def test_ai_security_requires_ai_and_security_context() -> None:
     result = evaluate_item(
-        item("wiz", "MCP authorization bypass vulnerability"),
-        SOURCES["wiz"],
+        item("wiz_ai", "MCP authorization bypass vulnerability"),
+        AI_SOURCES["wiz_ai"],
         AI_SECURITY,
     )
 
@@ -391,14 +392,32 @@ def test_sans_isc_excludes_stormcast_and_selects_profile_signals() -> None:
     assert ai_result.score == 7
 
 
+def test_microsoft_uses_shared_ai_security_filter_after_noise_exclusion() -> None:
+    microsoft = AI_SOURCES["microsoft_ai_red_team"]
+    relevant = item(
+        "microsoft_ai_red_team",
+        "AI agent prompt injection vulnerability",
+        "Microsoft AI Red Team analyzes an attack against coding agents.",
+    )
+    product_update = item(
+        "microsoft_ai_red_team",
+        "AI security platform update",
+        "A product announcement for the new platform.",
+    )
+
+    assert passes_source_filter(relevant, microsoft)
+    assert evaluate_item(relevant, microsoft, AI_SECURITY) is not None
+    assert not passes_source_filter(product_update, microsoft)
+
+
 def test_ai_profile_rejects_generic_security_without_ai_context() -> None:
     metabase = evaluate_item(
         item(
-            "wiz",
+            "wiz_ai",
             "Inside the Metabase SQLi: Exploited in the Wild",
             "Reverse engineering CVE-2026-72898 with AI to accelerate defense.",
         ),
-        SOURCES["wiz"],
+        AI_SOURCES["wiz_ai"],
         AI_SECURITY,
     )
     teamcity = evaluate_item(
@@ -418,11 +437,11 @@ def test_ai_profile_rejects_generic_security_without_ai_context() -> None:
 def test_ai_profile_selects_exposed_mcp_command_execution() -> None:
     result = evaluate_item(
         item(
-            "wiz",
+            "wiz_ai",
             "The risk hiding behind exposed MCP servers",
             "Unauthenticated Model Context Protocol servers allow command execution.",
         ),
-        SOURCES["wiz"],
+        AI_SOURCES["wiz_ai"],
         AI_SECURITY,
     )
 
@@ -447,8 +466,8 @@ def test_ai_profile_selects_llm_researching_cves() -> None:
     assert "cves" in result.why_matched
     assert (
         evaluate_item(
-            item("wiz", "Critical authentication bypass vulnerability"),
-            SOURCES["wiz"],
+            item("wiz_ai", "Critical authentication bypass vulnerability"),
+            AI_SOURCES["wiz_ai"],
             AI_SECURITY,
         )
         is None
@@ -528,7 +547,7 @@ def test_force_notify_is_selected_by_profile_not_source_model() -> None:
     assert result.matched_topic == "forced"
     assert result.why_matched[-1] == "force-notify:cisa_kev"
     assert AI_SECURITY.profile.force_notify_source_ids == (
-        "wiz",
+        "wiz_ai",
         "wiz_datasecurity",
         "bitwarden",
     )

@@ -69,7 +69,9 @@ def test_loads_repository_configuration() -> None:
     )
     assert not google.match_content
     assert google.match_summary_chars == 500
-    wiz_ai = next(source for source in ai_sources.enabled_sources if source.id == "wiz")
+    wiz_ai = next(
+        source for source in ai_sources.enabled_sources if source.id == "wiz_ai"
+    )
     assert wiz_ai.url == "https://www.wiz.io/feed/tag/ai/rss.xml"
     wiz_data = next(
         source
@@ -78,7 +80,7 @@ def test_loads_repository_configuration() -> None:
     )
     assert wiz_data.url == "https://www.wiz.io/feed/tag/datasecurity/rss.xml"
     wiz_security = next(
-        source for source in sources.enabled_sources if source.id == "wiz"
+        source for source in sources.enabled_sources if source.id == "wiz_security"
     )
     assert wiz_security.url == "https://www.wiz.io/feed/tag/security/rss.xml"
     wiz_cirt = next(
@@ -114,20 +116,37 @@ def test_loads_repository_configuration() -> None:
         "Security Tips",
         "Secure Sharing",
     )
+    microsoft = next(
+        source
+        for source in ai_sources.enabled_sources
+        if source.id == "microsoft_ai_red_team"
+    )
+    assert microsoft.match_content is False
+    assert microsoft.match_summary_chars == 1000
+    assert microsoft.source_filter is not None
+    assert microsoft.source_filter.include_any == ()
+    assert microsoft.source_filter.exclude == (
+        "leader",
+        "leadership compass",
+        "what's new",
+        "product announcement",
+        "platform update",
+        "customer story",
+    )
     assert security.profile.id == "supply_chain_vulnerability"
     assert (
         security.profile.webhook_env == "SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY"
     )
     assert security.profile.force_notify_source_ids == (
         "cisa_kev",
-        "wiz",
+        "wiz_security",
         "wiz_cirt",
         "stepsecurity",
     )
     assert ai_security.profile.id == "ai_security"
     assert ai_security.profile.webhook_env == "SLACK_WEBHOOK_URL_AI_SECURITY"
     assert ai_security.profile.force_notify_source_ids == (
-        "wiz",
+        "wiz_ai",
         "wiz_datasecurity",
         "bitwarden",
     )

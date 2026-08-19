@@ -4,7 +4,7 @@ profile:
   id: ai_security
   webhook_env: SLACK_WEBHOOK_URL_AI_SECURITY
   force_notify_source_ids:
-    - wiz
+    - wiz_ai
     - wiz_datasecurity
     - bitwarden
 
@@ -190,8 +190,8 @@ sources:
         - "サービス紹介"
     notes: Top-page excerpts avoid full-article noise in the RSS description.
 
-  - id: wiz
-    name: Wiz
+  - id: wiz_ai
+    name: Wiz AI
     enabled: true
     type: rss
     url: https://www.wiz.io/feed/tag/ai/rss.xml
@@ -283,21 +283,6 @@ sources:
     match_content: false
     match_summary_chars: 1000
     source_filter:
-      include_any:
-        - AI security
-        - AI red team
-        - AI attack
-        - AI vulnerability
-        - AI agent
-        - AI agents
-        - coding agent
-        - coding agents
-        - agentic AI
-        - Copilot
-        - LLM security
-        - prompt injection
-        - agent security
-        - agentic security
       exclude:
         - leader
         - leadership compass
@@ -305,7 +290,7 @@ sources:
         - product announcement
         - platform update
         - customer story
-    notes: Microsoft Security research with an AI red-teaming and AI security source filter.
+    notes: Microsoft Security research; publication-specific noise is excluded before the shared AI Security filter.
 
   - id: hiddenlayer
     name: HiddenLayer Research
