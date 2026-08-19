@@ -6,6 +6,7 @@ profile:
   force_notify_source_ids:
     - wiz
     - wiz_datasecurity
+    - bitwarden
 
 notification:
   threshold: 7
@@ -216,6 +217,17 @@ sources:
         - webinar
         - customer story
     notes: Wiz research-tagged articles evaluated by the normal AI Security filters.
+
+  - id: bitwarden
+    name: Bitwarden Blog
+    enabled: true
+    type: rss
+    url: https://bitwarden.com/blog/feed.xml
+    priority: 2
+    source_filter:
+      include_any:
+        - Agentic AI
+    notes: Bitwarden Agentic AI articles evaluated by the normal AI Security filters.
 
   - id: google_threat_intel
     name: Google Threat Intelligence / Mandiant

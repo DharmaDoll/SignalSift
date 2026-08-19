@@ -30,8 +30,8 @@ def test_loads_repository_configuration() -> None:
         ROOT / "config/ai_security.yaml"
     )
 
-    assert len(sources.enabled_sources) == 11
-    assert len(ai_sources.enabled_sources) == 14
+    assert len(sources.enabled_sources) == 12
+    assert len(ai_sources.enabled_sources) == 15
     assert "cisa_kev" not in {source.id for source in ai_sources.enabled_sources}
     assert {source.id for source in ai_sources.enabled_sources} >= {
         "ai_incident_database",
@@ -99,6 +99,21 @@ def test_loads_repository_configuration() -> None:
         ).url
         == "https://www.wiz.io/feed/tag/research/rss.xml"
     )
+    bitwarden_ai = next(
+        source for source in ai_sources.enabled_sources if source.id == "bitwarden"
+    )
+    assert bitwarden_ai.url == "https://bitwarden.com/blog/feed.xml"
+    assert bitwarden_ai.source_filter is not None
+    assert bitwarden_ai.source_filter.include_any == ("Agentic AI",)
+    bitwarden_supply = next(
+        source for source in sources.enabled_sources if source.id == "bitwarden"
+    )
+    assert bitwarden_supply.url == "https://bitwarden.com/blog/feed.xml"
+    assert bitwarden_supply.source_filter is not None
+    assert bitwarden_supply.source_filter.include_any == (
+        "Security Tips",
+        "Secure Sharing",
+    )
     assert security.profile.id == "supply_chain_vulnerability"
     assert (
         security.profile.webhook_env == "SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY"
@@ -111,7 +126,11 @@ def test_loads_repository_configuration() -> None:
     )
     assert ai_security.profile.id == "ai_security"
     assert ai_security.profile.webhook_env == "SLACK_WEBHOOK_URL_AI_SECURITY"
-    assert ai_security.profile.force_notify_source_ids == ("wiz", "wiz_datasecurity")
+    assert ai_security.profile.force_notify_source_ids == (
+        "wiz",
+        "wiz_datasecurity",
+        "bitwarden",
+    )
     assert security.notification.threshold == 7
     assert security.negative_terms.score == -5
     assert security.negative_terms.mild.score == -3

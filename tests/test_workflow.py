@@ -12,11 +12,11 @@ LOAD_STATE_SCRIPT = ROOT / ".github/scripts/load-state.sh"
 PERSIST_STATE_SCRIPT = ROOT / ".github/scripts/persist-state.sh"
 
 
-def test_workflow_keeps_schedule_disabled_until_operations_enable_it() -> None:
+def test_workflow_runs_on_hourly_schedule_and_supports_manual_dispatch() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
 
-    assert '  # schedule:' in text
-    assert '  #   - cron: "17,47 * * * *"' in text
+    document = yaml.safe_load(text)
+    assert document[True]["schedule"] == [{"cron": "0 * * * *"}]
     assert "  workflow_dispatch:" in text
 
 

@@ -200,6 +200,18 @@ sources:
         - customer story
     notes: Wiz research-tagged articles evaluated by the normal Supply Chain filters.
 
+  - id: bitwarden
+    name: Bitwarden Blog
+    enabled: true
+    type: rss
+    url: https://bitwarden.com/blog/feed.xml
+    priority: 2
+    source_filter:
+      include_any:
+        - Security Tips
+        - Secure Sharing
+    notes: Bitwarden security and secure-sharing articles evaluated by the normal Supply Chain filters.
+
   - id: stepsecurity
     name: StepSecurity
     enabled: true

@@ -85,6 +85,58 @@ def test_source_filters_remove_only_publication_specific_noise() -> None:
     )
 
 
+def test_bitwarden_filters_by_profile_categories() -> None:
+    ai = NormalizedItem(
+        id="bitwarden-ai",
+        source_id="bitwarden",
+        title="Protecting agent credentials",
+        url="https://example.test/ai",
+        published_at=datetime(2026, 8, 12, tzinfo=UTC),
+        categories=("Agentic AI",),
+    )
+    supply = NormalizedItem(
+        id="bitwarden-supply",
+        source_id="bitwarden",
+        title="Password security guidance",
+        url="https://example.test/supply",
+        published_at=datetime(2026, 8, 12, tzinfo=UTC),
+        categories=("Security Tips",),
+    )
+
+    assert passes_source_filter(ai, AI_SOURCES["bitwarden"])
+    assert not passes_source_filter(
+        item("bitwarden", "Password security guidance", "Category: Security Tips"),
+        AI_SOURCES["bitwarden"],
+    )
+    assert passes_source_filter(supply, SOURCES["bitwarden"])
+    assert not passes_source_filter(
+        item("bitwarden", "Agent access", "Category: Agentic AI"),
+        SOURCES["bitwarden"],
+    )
+
+
+def test_bitwarden_agentic_ai_category_is_force_notified() -> None:
+    item_with_category = NormalizedItem(
+        id="bitwarden-agentic-ai",
+        source_id="bitwarden",
+        title="Shadow AI agents and credential access",
+        url="https://example.test/agentic-ai",
+        published_at=datetime(2026, 8, 12, tzinfo=UTC),
+        categories=("Agentic AI",),
+    )
+
+    result = evaluate_item(
+        item_with_category,
+        AI_SOURCES["bitwarden"],
+        AI_SECURITY,
+        force_notify=True,
+    )
+
+    assert result is not None
+    assert result.matched_topic == "forced"
+    assert "force-notify:bitwarden" in result.why_matched
+
+
 def test_github_security_blog_ignores_full_content_for_matching() -> None:
     content_only = NormalizedItem(
         id="github-1",
@@ -475,7 +527,11 @@ def test_force_notify_is_selected_by_profile_not_source_model() -> None:
     assert result is not None
     assert result.matched_topic == "forced"
     assert result.why_matched[-1] == "force-notify:cisa_kev"
-    assert AI_SECURITY.profile.force_notify_source_ids == ("wiz", "wiz_datasecurity")
+    assert AI_SECURITY.profile.force_notify_source_ids == (
+        "wiz",
+        "wiz_datasecurity",
+        "bitwarden",
+    )
 
 
 def test_cisa_kev_category_explains_urgency() -> None:
