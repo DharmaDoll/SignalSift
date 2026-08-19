@@ -2,8 +2,8 @@ name: SignalSift Profiles
 
 on:
   # Enable this only after configuring Slack secrets and the state branch.
-  # schedule:
-  #   - cron: "17,47 * * * *"
+  schedule:
+    - cron: "0 * * * "
 
   workflow_dispatch:
     inputs:
