@@ -119,7 +119,7 @@ Slack送信が失敗した記事は`state`へ追加されず、次回実行で�
 
 ### 0.8 定期的な品質評価
 
-現在のscheduleは、Webhookなしでソース取得とフィルタ品質を確認するためのdry-runとして動作します。schedule実行ではSlackへ送信せず、本番`state`ブランチも読み書きしません。Actionsログで各sourceの取得件数、候補数、matched数、drop理由を確認できます。
+現在のscheduleは、Webhookなしでソース取得とフィルタ品質を確認するためのシミュレーション実行として動作します。schedule実行ではSlackへ送信せず、`state-test`ブランチだけを読み書きします。本番`state`ブランチは変更しません。Actionsログで各sourceの取得件数、候補数、matched数、drop理由を確認できます。
 
 本番Slack配信は、Repository secretsを設定した後に`workflow_dispatch`で`simulate_delivery`を無効にして実行します。定期的な本番配信へ切り替える場合は、scheduleの実行モードを意図的に変更し、Webhookと`state`の運用を確認してから行ってください。
 
@@ -141,28 +141,41 @@ Slack送信が失敗した記事は`state`へ追加されず、次回実行で�
    - `state` ブランチへstateが保存される
    - 同じworkflowを再実行しても同じ記事が重複通知されない
 
-3. [`.github/workflows/signalsift.yml`](../.github/workflows/signalsift.yml) を確認し、scheduleが品質評価用のdry-runになっている箇所を本番実行へ変更する。
+3. [`.github/workflows/signalsift.yml`](../.github/workflows/signalsift.yml) を確認し、scheduleが`state-test`向けシミュレーション実行になっている箇所を本番実行へ変更する。
 
-   - `QUALITY_RUN` による `--dry-run` 分岐を本番実行へ変更する
-   - `Load notification state` の `github.event_name != 'schedule'` 条件を見直す
-   - `Persist notification state` のschedule除外条件を見直す
-   - `STATE_BRANCH` が本番では `state` になることを確認する
+   変更対象は、workflow冒頭のJob環境変数2行です。
+
+   現在の品質評価・state-test設定：
+
+   ```yaml
+   STATE_BRANCH: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.simulate_delivery)) && 'state-test' || 'state' }}
+   SIMULATE_DELIVERY: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.simulate_delivery) }}
+   ```
+
+   本番scheduleへ切り替える設定：
+
+   ```yaml
+   STATE_BRANCH: ${{ (github.event_name == 'workflow_dispatch' && inputs.simulate_delivery) && 'state-test' || 'state' }}
+   SIMULATE_DELIVERY: ${{ github.event_name == 'workflow_dispatch' && inputs.simulate_delivery }}
+   ```
+
+   この2行以外のPythonコードやstateスクリプトを変更する必要はありません。変更後は、scheduleが`state`を使い、`--simulate-delivery`なしで実行されることを確認します。
 
 4. workflow変更をレビューしてmainへ反映し、scheduleを1回実行する。
 
 5. Actionsログで、両ProfileのSlack送信成功、`state_changed=true`、`state` ブランチ更新を確認する。次回実行では既通知記事が `duplicates` になり、再通知されないことを確認する。
 
-本番化前にdry-runのscheduleを無効化する必要はありません。切り替え作業中はdry-runのまま動作し、Webhook送信や本番state変更は発生しません。
+本番化前にscheduleを無効化する必要はありません。切り替え作業中はシミュレーションのまま動作し、Webhook送信や本番`state`変更は発生しません。`state-test`にはシミュレーション結果が蓄積されます。
 
 公開リポジトリをForkした場合、scheduled workflowはGitHubによって初期状態で無効化されます。また、公開リポジトリは60日間活動がないとscheduled workflowが自動無効化されることがあります。scheduleをmergeした後、**Actions → SignalSift Profiles** のメニューに **Enable workflow** が表示される場合は有効化してください。詳細は[GitHubのWorkflow有効化手順](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/disable-and-enable-workflows)を参照してください。
 
-有効化後は、Actions画面で次回実行が作成されることと、dry-runの評価ログが出力されることを確認します。cronはUTC基準です。
+有効化後は、Actions画面で次回実行が作成されること、シミュレーション評価ログが出力されること、`state-test`ブランチが更新されることを確認します。cronはUTC基準です。
 
 ### 0.9 upstreamの更新を取り込む
 
 セキュリティ修正や情報源変更を取り込む場合は、Forkのトップ画面にある **Sync fork → Update branch** を使用できます。更新内容とWorkflow差分を必ず確認してから同期してください。詳しくは[GitHubのFork同期手順](https://docs.github.com/en/pull-requests/how-tos/work-with-forks/syncing-a-fork)を参照してください。
 
-このリポジトリのscheduleは、初期状態ではWebhookなしの品質評価dry-runとして動作します。upstream同期後は、Fork側で本番配信へ切り替えたworkflowの変更が上書きされていないか確認してください。Profile設定をForkで変更している場合も競合や上書きに注意してください。`state`と`state-test`は別ブランチなので、通常の`main`同期では変更されません。
+このリポジトリのscheduleは、初期状態ではWebhookなしの`state-test`向けシミュレーションとして動作します。upstream同期後は、Fork側で本番配信へ切り替えたworkflowの変更が上書きされていないか確認してください。Profile設定をForkで変更している場合も競合や上書きに注意してください。`state`と`state-test`は別ブランチなので、通常の`main`同期では変更されません。
 
 ### 0.10 運用開始チェックリスト
 
@@ -216,7 +229,7 @@ permissions:
 
 ## 4. 初回の手動実行
 
-現在、誤通知を避けるため定期実行cronはコメントアウトされています。
+scheduleはWebhookなしのシミュレーションとして有効です。定期実行ではSlackへ送信せず、`state-test`だけを更新します。
 
 Webhookを設定する前にActionsと両Profileの取得・state重複排除だけを確認する場合は、**Run workflow** で `simulate_delivery` を有効にします。Slackと本番の`state`ブランチは使わず、シミュレーション結果を専用の`state-test`ブランチへ保存します。同じcommitを対象にWorkflowを2回実行し、1回目の`state_changed=true`と、別runnerで動く2回目の`duplicates`、`notifications=0`、`state_changed=false`を確認してください。
 
@@ -257,18 +270,19 @@ AI Security Profileを確認する場合は`--profile ai-security`と対応す�
 
 `--review-lookback-hours`は精度調整用です。本番の24時間cutoffや通知履歴を変更しません。
 
-## 6. cronを有効化する
+## 6. scheduleの品質評価を確認する
 
-手動実行とSlack通知を確認してから、`.github/workflows/signalsift.yml`のcronコメントを解除します。
+Fork後にActionsを有効化すると、scheduleが毎時実行されます。scheduleはWebhookなしの`--simulate-delivery`で動作し、`state-test`へ取得・フィルタ・重複排除の結果を保存します。
 
-```yaml
-on:
-  schedule:
-    - cron: "17,47 * * * *"
-  workflow_dispatch:
-```
+次を確認してください。
 
-cronはGitHub ActionsのUTC基準です。変更をpushすると、Workflowの構文チェック後、次回スケジュールから定期実行されます。push直後に自動実行される設定ではありません。
+1. Actions画面で`SignalSift Profiles`が有効になっている
+2. schedule実行が成功する
+3. 各sourceの取得件数・候補数・matched数を確認する
+4. `state-test`ブランチが作成または更新される
+5. 次回実行で既存記事が`duplicates`になる
+
+cronはGitHub ActionsのUTC基準です。本番Slackをscheduleで配信する場合は、先に「0.8.1 scheduleを本番配信へ切り替えるチェックリスト」を実施してください。
 
 ## 7. 通常運用の確認項目
 
@@ -440,9 +454,9 @@ git status --short
 
 ## 10. 停止・再開
 
-停止する場合はWorkflowのcronをコメントアウトします。既存のstateはそのまま保持されます。
+停止する場合はGitHub Actions画面でWorkflowを無効化するか、scheduleを削除します。既存の`state`と`state-test`はそのまま保持されます。
 
-再開時は、まず`workflow_dispatch`で手動実行し、Slackとstate更新を確認してからcronを再有効化します。
+再開時は、まず`workflow_dispatch`で`simulate_delivery=true`を実行し、`state-test`更新を確認します。本番配信を再開する場合は、Secretsと`simulate_delivery=false`の手動実行を確認してからscheduleの実行モードを見直します。
 
 ## 11. セキュリティ上の注意
 

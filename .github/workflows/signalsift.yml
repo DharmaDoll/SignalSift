@@ -1,7 +1,7 @@
 name: SignalSift Profiles
 
 on:
-  # Scheduled runs evaluate source/filter quality without Slack or state writes.
+  # Scheduled runs evaluate source/filter quality and persist only to state-test.
   schedule:
     - cron: "0 * * * *"
 
@@ -25,9 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      STATE_BRANCH: ${{ (github.event_name == 'workflow_dispatch' && inputs.simulate_delivery) && 'state-test' || 'state' }}
-      SIMULATE_DELIVERY: ${{ github.event_name == 'workflow_dispatch' && inputs.simulate_delivery }}
-      QUALITY_RUN: ${{ github.event_name == 'schedule' }}
+      STATE_BRANCH: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.simulate_delivery)) && 'state-test' || 'state' }}
+      SIMULATE_DELIVERY: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.simulate_delivery) }}
 
     steps:
       - name: Checkout
@@ -65,7 +64,6 @@ jobs:
 
       - name: Load notification state
         id: load_state
-        if: github.event_name != 'schedule'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -80,9 +78,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mode_flag=()
-          if [ "$QUALITY_RUN" = "true" ]; then
-            mode_flag=(--dry-run)
-          elif [ "$SIMULATE_DELIVERY" = "true" ]; then
+          if [ "$SIMULATE_DELIVERY" = "true" ]; then
             mode_flag=(--simulate-delivery)
           fi
           uv run --locked signalsift run \
@@ -99,9 +95,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mode_flag=()
-          if [ "$QUALITY_RUN" = "true" ]; then
-            mode_flag=(--dry-run)
-          elif [ "$SIMULATE_DELIVERY" = "true" ]; then
+          if [ "$SIMULATE_DELIVERY" = "true" ]; then
             mode_flag=(--simulate-delivery)
           fi
           uv run --locked signalsift run \
@@ -110,7 +104,7 @@ jobs:
             --state-path .local/state/ai_security.json
 
       - name: Persist notification state
-        if: always() && github.event_name != 'schedule' && steps.load_state.outcome == 'success'
+        if: always() && steps.load_state.outcome == 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           STATE_BRANCH_EXISTS: ${{ steps.load_state.outputs.branch_exists }}

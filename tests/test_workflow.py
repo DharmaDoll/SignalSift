@@ -32,20 +32,15 @@ def test_workflow_dispatch_can_simulate_state_without_slack() -> None:
         "default": True,
         "type": "boolean",
     }
-    assert "'state-test' || 'state'" in job["env"]["STATE_BRANCH"]
-    assert "inputs.simulate_delivery" in job["env"]["SIMULATE_DELIVERY"]
-    assert "github.event_name == 'schedule'" in job["env"]["QUALITY_RUN"]
+    assert "github.event_name == 'schedule'" in job["env"]["STATE_BRANCH"]
+    assert "inputs.simulate_delivery" in job["env"]["STATE_BRANCH"]
+    assert "github.event_name == 'schedule'" in job["env"]["SIMULATE_DELIVERY"]
     assert "mode_flag=(--simulate-delivery)" in steps[
         "Run Supply Chain Vulnerability profile"
     ]["run"]
     assert "mode_flag=(--simulate-delivery)" in steps[
         "Run AI Security profile"
     ]["run"]
-    assert "mode_flag=(--dry-run)" in steps[
-        "Run Supply Chain Vulnerability profile"
-    ]["run"]
-    assert "mode_flag=(--dry-run)" in steps["Run AI Security profile"]["run"]
-    assert steps["Load notification state"]["if"] == "github.event_name != 'schedule'"
     assert steps["Load notification state"]["run"] == ".github/scripts/load-state.sh"
     assert steps["Persist notification state"]["run"] == (
         ".github/scripts/persist-state.sh"
@@ -85,7 +80,7 @@ def test_workflow_keeps_failure_and_state_boundaries_explicit() -> None:
         "STATE_BRANCH_EXISTS",
     }
     assert by_name["Persist notification state"]["if"] == (
-        "always() && github.event_name != 'schedule' && steps.load_state.outcome == 'success'"
+        "always() && steps.load_state.outcome == 'success'"
     )
     assert by_name["Remove Git credentials"]["if"] == "always()"
     failure_condition = by_name["Report collector failure"]["if"]
