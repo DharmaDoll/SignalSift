@@ -117,19 +117,52 @@ SLACK_WEBHOOK_URL_AI_SECURITY
 
 Slack送信が失敗した記事は`state`へ追加されず、次回実行で再試行されます。`state-test`と`state`は役割が異なるため、統合・コピーしないでください。
 
-### 0.8 定期実行を有効にする
+### 0.8 定期的な品質評価
 
-初回実配信と重複抑止を確認した後だけ、`.github/workflows/signalsift.yml`のscheduleコメントをForkの`main`で解除します。変更はPull Requestでレビューしてからmergeすることを推奨します。
+現在のscheduleは、Webhookなしでソース取得とフィルタ品質を確認するためのdry-runとして動作します。schedule実行ではSlackへ送信せず、本番`state`ブランチも読み書きしません。Actionsログで各sourceの取得件数、候補数、matched数、drop理由を確認できます。
+
+本番Slack配信は、Repository secretsを設定した後に`workflow_dispatch`で`simulate_delivery`を無効にして実行します。定期的な本番配信へ切り替える場合は、scheduleの実行モードを意図的に変更し、Webhookと`state`の運用を確認してから行ってください。
+
+### 0.8.1 scheduleを本番配信へ切り替えるチェックリスト
+
+本番時は、次の順番で確認・修正します。
+
+1. Repository Secretsに次の2つが登録されていることを確認する。
+
+   ```text
+   SLACK_WEBHOOK_URL_SUPPLY_CHAIN_VULNERABILITY
+   SLACK_WEBHOOK_URL_AI_SECURITY
+   ```
+
+2. `workflow_dispatch` で `simulate_delivery=false` を実行し、次を確認する。
+
+   - 両Profileの実行が成功する
+   - Slackへ通知が届く
+   - `state` ブランチへstateが保存される
+   - 同じworkflowを再実行しても同じ記事が重複通知されない
+
+3. [`.github/workflows/signalsift.yml`](../.github/workflows/signalsift.yml) を確認し、scheduleが品質評価用のdry-runになっている箇所を本番実行へ変更する。
+
+   - `QUALITY_RUN` による `--dry-run` 分岐を本番実行へ変更する
+   - `Load notification state` の `github.event_name != 'schedule'` 条件を見直す
+   - `Persist notification state` のschedule除外条件を見直す
+   - `STATE_BRANCH` が本番では `state` になることを確認する
+
+4. workflow変更をレビューしてmainへ反映し、scheduleを1回実行する。
+
+5. Actionsログで、両ProfileのSlack送信成功、`state_changed=true`、`state` ブランチ更新を確認する。次回実行では既通知記事が `duplicates` になり、再通知されないことを確認する。
+
+本番化前にdry-runのscheduleを無効化する必要はありません。切り替え作業中はdry-runのまま動作し、Webhook送信や本番state変更は発生しません。
 
 公開リポジトリをForkした場合、scheduled workflowはGitHubによって初期状態で無効化されます。また、公開リポジトリは60日間活動がないとscheduled workflowが自動無効化されることがあります。scheduleをmergeした後、**Actions → SignalSift Profiles** のメニューに **Enable workflow** が表示される場合は有効化してください。詳細は[GitHubのWorkflow有効化手順](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/disable-and-enable-workflows)を参照してください。
 
-有効化後は、Actions画面で次回実行が作成されること、Slack通知、`state`ブランチの更新を確認します。cronはUTC基準です。
+有効化後は、Actions画面で次回実行が作成されることと、dry-runの評価ログが出力されることを確認します。cronはUTC基準です。
 
 ### 0.9 upstreamの更新を取り込む
 
 セキュリティ修正や情報源変更を取り込む場合は、Forkのトップ画面にある **Sync fork → Update branch** を使用できます。更新内容とWorkflow差分を必ず確認してから同期してください。詳しくは[GitHubのFork同期手順](https://docs.github.com/en/pull-requests/how-tos/work-with-forks/syncing-a-fork)を参照してください。
 
-このリポジトリではupstream側のscheduleを安全のためコメントアウトしています。upstream同期後は、Fork側で有効化したscheduleが再びコメントアウトされていないか確認してください。Profile設定をForkで変更している場合も競合や上書きに注意してください。`state`と`state-test`は別ブランチなので、通常の`main`同期では変更されません。
+このリポジトリのscheduleは、初期状態ではWebhookなしの品質評価dry-runとして動作します。upstream同期後は、Fork側で本番配信へ切り替えたworkflowの変更が上書きされていないか確認してください。Profile設定をForkで変更している場合も競合や上書きに注意してください。`state`と`state-test`は別ブランチなので、通常の`main`同期では変更されません。
 
 ### 0.10 運用開始チェックリスト
 
@@ -141,7 +174,8 @@ Slack送信が失敗した記事は`state`へ追加されず、次回実行で�
 - [ ] `simulate_delivery=false`でSlack実配信を確認
 - [ ] `state`ブランチ作成と2回目の重複抑止を確認
 - [ ] 通知内容と誤検知件数を数日間確認
-- [ ] scheduleのコメント解除をレビュー
+- [ ] scheduleの品質評価dry-runが正常に動作することを確認
+- [ ] 本番配信へ切り替える場合はworkflowのdry-run/state条件をレビュー
 - [ ] scheduled workflowがGitHub上で有効
 - [ ] Webhook URLがソース、ログ、Issue、Pull Requestへ露出していない
 
