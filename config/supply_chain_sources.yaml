@@ -11,6 +11,7 @@ profile:
     - wiz_security
     - wiz_cirt
     - stepsecurity
+    - github_security_blog
 
 notification:
   threshold: 7
@@ -264,12 +265,7 @@ sources:
     url: https://github.blog/security/feed/
     priority: 3
     match_content: false
-    source_filter:
-      exclude:
-        - Tame Dependabot
-        - security settings every GitHub maintainer
-        - Advisory Database
-    notes: Official supply-chain, vulnerability, GitHub Actions, and Security Lab information. Match only title, excerpt, categories, and external IDs to avoid full-article noise.
+    notes: Official GitHub Security category; all entries are trusted for Supply Chain/Vulnerability review. Match only title, excerpt, categories, and external IDs to avoid full-article noise.
 
   # Candidate sources remain commented out until an observed coverage gap justifies them.
   # - id: github_advisories

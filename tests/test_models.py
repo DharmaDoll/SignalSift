@@ -62,6 +62,7 @@ def test_loads_repository_configuration() -> None:
     )
     assert not github.match_content
     assert github.url == "https://github.blog/security/feed/"
+    assert github.source_filter is None
     google = next(
         source
         for source in sources.enabled_sources
@@ -142,6 +143,7 @@ def test_loads_repository_configuration() -> None:
         "wiz_security",
         "wiz_cirt",
         "stepsecurity",
+        "github_security_blog",
     )
     assert ai_security.profile.id == "ai_security"
     assert ai_security.profile.webhook_env == "SLACK_WEBHOOK_URL_AI_SECURITY"
