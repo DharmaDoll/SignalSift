@@ -2,6 +2,27 @@
 
 この文書は、SignalSiftを自分のGitHubリポジトリとSlackで運用開始するための手順です。
 
+## まず確認すること
+
+最初に、目的に応じて実行モードを選びます。
+
+| 目的 | 起動方法 | Slack | 保存先 |
+|---|---|---|---|
+| 定期的な取得・フィルタ品質の確認 | schedule | 送信しない | `state-test` |
+| state重複排除の手動検証 | `workflow_dispatch` + `simulate_delivery=true` | 送信しない | `state-test` |
+| 本番通知 | `workflow_dispatch` + `simulate_delivery=false` | 送信する | `state` |
+
+推奨する読む順番は次のとおりです。
+
+1. [クイックスタート](#0-forkから運用開始までのクイックスタート)
+2. [WebhookとSecrets](#2-slack-webhookを登録する)
+3. [初回の手動実行](#4-初回の手動実行)
+4. [scheduleの品質評価](#6-scheduleの品質評価を確認する)
+5. [本番scheduleへの切り替え](#081-scheduleを本番配信へ切り替えるチェックリスト)
+6. [障害対応](#8-障害対応) / [ローカル実行](#9-ローカル実行)
+
+`state-test` はSlack送信成功を表しません。本番通知の台帳は`state`だけです。Webhookをまだ持っていない場合は、scheduleまたは`simulate_delivery=true`で検証してください。
+
 ## 0. Forkから運用開始までのクイックスタート
 
 この章は、公開リポジトリをForkし、Webhookなしの検証を経てSlack配信を開始するまでの一本道の手順です。組織内の専用リポジトリへコピーして運用する場合も、Fork操作以外は同じです。
@@ -187,10 +208,14 @@ Slack送信が失敗した記事は`state`へ追加されず、次回実行で�
 - [ ] `simulate_delivery=false`でSlack実配信を確認
 - [ ] `state`ブランチ作成と2回目の重複抑止を確認
 - [ ] 通知内容と誤検知件数を数日間確認
-- [ ] scheduleの品質評価dry-runが正常に動作することを確認
-- [ ] 本番配信へ切り替える場合はworkflowのdry-run/state条件をレビュー
+- [ ] scheduleのstate-testシミュレーションが正常に動作することを確認
+- [ ] 本番配信へ切り替える場合はworkflowのsimulate/state条件をレビュー
 - [ ] scheduled workflowがGitHub上で有効
 - [ ] Webhook URLがソース、ログ、Issue、Pull Requestへ露出していない
+
+## 詳細リファレンス
+
+以下は、クイックスタートで行った作業の詳細と、日常運用・障害対応のリファレンスです。初めて使う場合は上のクイックスタートを先に完了してください。
 
 ## 1. 運用リポジトリを用意する
 
