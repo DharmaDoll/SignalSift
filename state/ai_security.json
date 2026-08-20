@@ -15,6 +15,20 @@
       "title": "Top 10 zero-click attacks against AI agents",
       "url": "https://adversa.ai/blog/top-10-zero-click-attacks-against-ai-agents/"
     },
+    "51378b4a9ebc8a99ca6c3869c21d2280ff1cc941022e87add64ba9a15d5a3ae3": {
+      "notified_at": "2026-08-20T06:39:31.821635Z",
+      "published_at": "2026-08-18T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Meta AI model hacks another company during testing",
+      "url": "https://www.reuters.com/technology/metas-ai-model-hacked-another-company-during-testing-information-reports-2026-08-05/"
+    },
+    "5386143a5bd094399559e3cb45f1afdaab6128c92551c8cb9794550ed37880ef": {
+      "notified_at": "2026-08-20T06:39:31.821635Z",
+      "published_at": "2026-08-18T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Meta AI model hacked a company during misconfigured cyber test",
+      "url": "https://www.bleepingcomputer.com/news/security/meta-ai-model-hacked-a-company-during-misconfigured-cyber-test/"
+    },
     "8ee7251d4754c7888ce2329ec59e9cbcd04f9abeca7507a2b2352e3360bcf8f5": {
       "notified_at": "2026-08-18T23:02:08.498675Z",
       "published_at": "2026-08-14T12:19:18Z",
@@ -28,6 +42,13 @@
       "source": "ai_incident_database",
       "title": "AI assistant hacks gym website in first known Australian autonomous cyber attack",
       "url": "https://www.abc.net.au/news/2026-08-10/ai-assistant-hacks-gym-website-aus-cyber-attack/107007986"
+    },
+    "b356c4831902d8e9859baf6cdac24dac2b1e000197110649d913163622654ee2": {
+      "notified_at": "2026-08-20T06:39:31.821635Z",
+      "published_at": "2026-08-18T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Oh Lord, AI Reporters Are Actually Breaking Big News",
+      "url": "https://www.wired.com/story/ai-newsrooms-are-breaking-news-now-haha-im-in-danger/"
     },
     "de39eb1dd4471d453a08ea17c062b094ece40a3675456b2e999b71ecbbbe2de0": {
       "notified_at": "2026-08-18T23:02:08.498675Z",
