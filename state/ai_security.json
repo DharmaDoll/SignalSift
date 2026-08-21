@@ -15,6 +15,13 @@
       "title": "Top 10 zero-click attacks against AI agents",
       "url": "https://adversa.ai/blog/top-10-zero-click-attacks-against-ai-agents/"
     },
+    "49fdad8cb08b5f12eeec95f0645bf6254ff8b3e533568f80d31ff9be7948eb64": {
+      "notified_at": "2026-08-21T20:21:48.390036Z",
+      "published_at": "2026-08-20T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "What the latest rogue AI incidents should teach us",
+      "url": "https://www.transformernews.ai/p/what-the-latest-rogue-ai-incidents-should-teach-us"
+    },
     "51378b4a9ebc8a99ca6c3869c21d2280ff1cc941022e87add64ba9a15d5a3ae3": {
       "notified_at": "2026-08-20T06:39:31.821635Z",
       "published_at": "2026-08-18T00:00:00Z",
@@ -49,6 +56,13 @@
       "source": "ai_incident_database",
       "title": "Oh Lord, AI Reporters Are Actually Breaking Big News",
       "url": "https://www.wired.com/story/ai-newsrooms-are-breaking-news-now-haha-im-in-danger/"
+    },
+    "dae1bd1c304b692b075f47f1c812137f1376d4cb8df74eee742a49933f1ee346": {
+      "notified_at": "2026-08-21T20:21:48.390036Z",
+      "published_at": "2026-08-20T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "OpenAI’s Rogue AI Agent Hacked More Than Just Hugging Face",
+      "url": "https://www.wired.com/story/openais-rogue-ai-agent-hacked-more-than-just-hugging-face/"
     },
     "de39eb1dd4471d453a08ea17c062b094ece40a3675456b2e999b71ecbbbe2de0": {
       "notified_at": "2026-08-18T23:02:08.498675Z",
