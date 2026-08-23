@@ -62,6 +62,104 @@ def parse_cisa_kev(content: bytes, *, source_id: str) -> tuple[NormalizedItem, .
     return tuple(items)
 
 
+def fetch_github_advisories(
+    source: SourceConfig,
+    *,
+    transport: httpx.BaseTransport | None = None,
+) -> tuple[NormalizedItem, ...]:
+    if source.type != "json" or source.adapter != "github_advisories":
+        raise AdapterError(
+            f"source {source.id!r} is not configured for github_advisories"
+        )
+    fetched = fetch_bytes(source.url, transport=transport)
+    return parse_github_advisories(fetched.content, source_id=source.id)
+
+
+def parse_github_advisories(
+    content: bytes, *, source_id: str
+) -> tuple[NormalizedItem, ...]:
+    try:
+        document = json.loads(content)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise AdapterError(
+            f"invalid GitHub advisories JSON: {type(exc).__name__}"
+        ) from exc
+    if not isinstance(document, list):
+        raise AdapterError("invalid GitHub advisories document: expected array")
+
+    items: list[NormalizedItem] = []
+    for index, value in enumerate(document):
+        try:
+            if not isinstance(value, Mapping):
+                raise TypeError("entry must be an object")
+            ghsa_id = _required_text(value, "ghsa_id")
+            title = _required_text(value, "summary")
+            url = _required_text(value, "html_url")
+            if not url.startswith("https://github.com/"):
+                raise ValueError("invalid advisory URL")
+            description = _optional_text(value, "description")
+            identifiers = value.get("identifiers", ())
+            external_ids = tuple(
+                dict.fromkeys(
+                    identifier["value"].upper()
+                    for identifier in identifiers
+                    if isinstance(identifier, Mapping)
+                    and isinstance(identifier.get("value"), str)
+                    and EXTERNAL_ID_PATTERN.fullmatch(identifier["value"])
+                )
+            )
+            published = _optional_text(value, "published_at")
+            published_at = datetime.fromisoformat(published.replace("Z", "+00:00"))
+            vulnerabilities = value.get("vulnerabilities", ())
+            packages = tuple(
+                package["package"]["name"]
+                for package in vulnerabilities
+                if isinstance(package, Mapping)
+                and isinstance(package.get("package"), Mapping)
+                and isinstance(package["package"].get("name"), str)
+            )
+            ecosystems = tuple(
+                package["package"]["ecosystem"]
+                for package in vulnerabilities
+                if isinstance(package, Mapping)
+                and isinstance(package.get("package"), Mapping)
+                and isinstance(package["package"].get("ecosystem"), str)
+            )
+            categories = tuple(
+                dict.fromkeys(
+                    value
+                    for value in (
+                        _optional_text(value, "severity"),
+                        *ecosystems,
+                        *packages,
+                    )
+                    if value
+                )
+            )
+            items.append(
+                NormalizedItem(
+                    id=ghsa_id,
+                    source_id=source_id,
+                    title=title,
+                    url=url,
+                    published_at=published_at,
+                    # Keep the long advisory description available for Slack,
+                    # while allowing this source to opt into title-only
+                    # matching via match_content=false.
+                    summary="",
+                    content=description,
+                    categories=categories,
+                    external_ids=external_ids,
+                    raw_metadata={"source_format": "github-advisories-json"},
+                )
+            )
+        except (KeyError, TypeError, ValueError, OverflowError) as exc:
+            LOGGER.warning("source=%s entry=%d skipped: %s", source_id, index, exc)
+    if document and not items:
+        raise AdapterError("GitHub advisories document contains no valid entries")
+    return tuple(items)
+
+
 def fetch_flatt_blog(
     source: SourceConfig,
     *,
@@ -614,6 +712,7 @@ def _optional_text(value: Mapping[str, Any], key: str) -> str:
 
 ADAPTERS: Mapping[str, Adapter] = {
     "cisa_kev": fetch_cisa_kev,
+    "github_advisories": fetch_github_advisories,
     "flatt_blog": fetch_flatt_blog,
     "huntr_blog": fetch_html_index,
     "lakera_blog": fetch_html_index,

@@ -37,6 +37,7 @@ rules:
     score: 5
     exclude_source_ids:
       - jpcert
+      - github_advisories
     any:
       - CVE
       - CVEs
@@ -92,6 +93,41 @@ rules:
       - "認証不要"
       - "リモートコード実行"
       - "バイパス"
+
+  github_advisories_supply_chain:
+    score: 5
+    source_ids:
+      - github_advisories
+    all_groups:
+      -
+        any:
+          - npm
+          - pip
+          - PyPI
+          - yarn
+          - pnpm
+          - actions
+          - Cargo
+          - crates.io
+          - composer
+          - maven
+          - nuget
+          - rubygems
+          - go
+          - rust
+      -
+        any:
+          - "malicious package"
+          - malware
+          - "compromised package"
+          - "compromised dependency"
+          - backdoor
+          - typosquat
+          - typosquatting
+          - "supply chain"
+          - "dependency confusion"
+          - hijack
+          - poisoned
 
   supply_chain_vulnerability_jpcert:
     score: 5
@@ -267,22 +303,29 @@ sources:
     match_content: false
     notes: Official GitHub Security category; all entries are trusted for Supply Chain/Vulnerability review. Match only title, excerpt, categories, and external IDs to avoid full-article noise.
 
-  # Candidate sources remain commented out until an observed coverage gap justifies them.
-  # - id: github_advisories
-  #   name: GitHub Global Security Advisories
-  #   enabled: true
-  #   type: json
-  #   url: https://api.github.com/advisories
-  #   adapter: github_advisories
-  #   priority: 2
-  #   notes: Enable only after defining ecosystem/product constraints.
-  # - id: socket
-  #   name: Socket Research
-  #   enabled: true
-  #   type: rss
-  #   url: https://socket.dev/blog
-  #   priority: 2
-  #   notes: Verify feed endpoint before enabling.
+  # Candidate sources below are enabled for dry-run quality evaluation first.
+  - id: github_advisories
+    name: GitHub Global Security Advisories
+    enabled: true
+    type: json
+    url: https://api.github.com/advisories?per_page=100&sort=published&direction=desc
+    adapter: github_advisories
+    priority: 2
+    match_content: false
+    notes: Public reviewed advisories; title-only matching avoids generic description noise during evaluation.
+  - id: socket
+    name: Socket Research
+    enabled: true
+    type: rss
+    url: https://socket.dev/api/feed.atom
+    priority: 2
+    source_filter:
+      exclude:
+        - beta
+        - company news
+        - product announcement
+        - pricing
+    notes: Official full-content Atom feed; evaluate normal filters before live delivery.
   # - id: jvn
   #   name: JVN / JVN iPedia
   #   enabled: true

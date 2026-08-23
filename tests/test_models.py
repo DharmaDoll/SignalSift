@@ -30,7 +30,7 @@ def test_loads_repository_configuration() -> None:
         ROOT / "config/ai_security.yaml"
     )
 
-    assert len(sources.enabled_sources) == 12
+    assert len(sources.enabled_sources) == 14
     assert len(ai_sources.enabled_sources) == 15
     assert "cisa_kev" not in {source.id for source in ai_sources.enabled_sources}
     assert {source.id for source in ai_sources.enabled_sources} >= {
@@ -157,7 +157,10 @@ def test_loads_repository_configuration() -> None:
     assert security.negative_terms.mild.score == -3
     assert dict(security.source_priority_score) == {1: 1, 2: 2, 3: 3}
     rules = {rule.name: rule for rule in security.rules}
-    assert rules["supply_chain_vulnerability"].exclude_source_ids == ("jpcert",)
+    assert rules["supply_chain_vulnerability"].exclude_source_ids == (
+        "jpcert",
+        "github_advisories",
+    )
     assert rules["supply_chain_vulnerability_jpcert"].source_ids == ("jpcert",)
 
 

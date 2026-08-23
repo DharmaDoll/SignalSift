@@ -12,6 +12,7 @@ from signalsift.adapters import (
     AdapterError,
     fetch_source,
     parse_cisa_kev,
+    parse_github_advisories,
     parse_flatt_blog,
     parse_html_index,
     parse_stepsecurity_threat_intel,
@@ -52,12 +53,42 @@ FLATT_INDEX_HTML = (FIXTURES / "flatt_index.html").read_bytes()
 def test_cisa_adapter_registry_is_static_and_minimal() -> None:
     assert tuple(ADAPTERS) == (
         "cisa_kev",
+        "github_advisories",
         "flatt_blog",
         "huntr_blog",
         "lakera_blog",
         "hiddenlayer_research",
         "stepsecurity_threat_intel",
     )
+
+
+def test_parse_github_advisories_normalizes_package_and_identifiers() -> None:
+    items = parse_github_advisories(
+        json.dumps(
+            [
+                {
+                    "ghsa_id": "GHSA-abcd-1234-efgh",
+                    "summary": "Malicious npm package",
+                    "description": "A package executes code during install.",
+                    "html_url": "https://github.com/advisories/GHSA-abcd-1234-efgh",
+                    "published_at": "2026-08-22T12:00:00Z",
+                    "severity": "high",
+                    "identifiers": [
+                        {"type": "GHSA", "value": "GHSA-abcd-1234-efgh"},
+                        {"type": "CVE", "value": "CVE-2026-1234"},
+                    ],
+                    "vulnerabilities": [
+                        {"package": {"ecosystem": "npm", "name": "example-pkg"}}
+                    ],
+                }
+            ]
+        ).encode(),
+        source_id="github_advisories",
+    )
+
+    assert len(items) == 1
+    assert items[0].external_ids == ("GHSA-ABCD-1234-EFGH", "CVE-2026-1234")
+    assert items[0].categories == ("high", "npm", "example-pkg")
 
 
 @pytest.mark.parametrize(

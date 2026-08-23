@@ -15,6 +15,7 @@ SOURCE_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 BUILTIN_ADAPTERS = frozenset(
     {
         "cisa_kev",
+        "github_advisories",
         "flatt_blog",
         "huntr_blog",
         "lakera_blog",
