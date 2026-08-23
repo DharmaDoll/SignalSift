@@ -28,6 +28,26 @@ def test_fetch_bytes_returns_content_and_user_agent() -> None:
     assert fetched.url == "https://example.test/feed"
 
 
+def test_fetch_bytes_retries_transient_status() -> None:
+    attempts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            return httpx.Response(403, request=request)
+        return httpx.Response(200, request=request, content=b"feed")
+
+    fetched = fetch_bytes(
+        "https://example.test/feed",
+        transport=httpx.MockTransport(handler),
+        retry_backoff_seconds=0,
+    )
+
+    assert fetched.content == b"feed"
+    assert attempts == 3
+
+
 def test_fetch_bytes_follows_relative_https_redirect() -> None:
     seen: list[str] = []
 

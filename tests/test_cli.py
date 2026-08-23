@@ -213,7 +213,7 @@ def test_source_failure_does_not_stop_remaining_sources(tmp_path: Path) -> None:
         output=output,
     )
 
-    assert exit_code == 1
+    assert exit_code == 0
     assert "source=failed fetch=failed" in output.getvalue()
     assert "source=example fetch=ok" in output.getvalue()
     assert "--- operational-alert-preview ---" in output.getvalue()
@@ -460,7 +460,7 @@ def test_live_cycle_sends_source_failure_alert_and_keeps_success_state(
         webhook_url="https://hooks.slack.test/services/test",
     )
 
-    assert exit_code == 1
+    assert exit_code == 0
     assert len(operational) == 1
     assert operational[0][0] == "https://hooks.slack.test/services/test"
     assert (

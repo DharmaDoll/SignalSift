@@ -324,7 +324,6 @@ def run_dry_cycle(
     review_dropped: list[ReviewDrop] = []
     seen_keys = set(notified_keys)
     stats: list[SourceRunStats] = []
-    had_source_failure = False
     baseline_observed = 0
     for source in sources.enabled_sources:
         processed = _process_source(
@@ -348,7 +347,6 @@ def run_dry_cycle(
             for result in processed.matched
             if result.article_key is not None
         )
-        had_source_failure |= processed.stats.fetch_status == "failed"
         _print_source_stats(processed.stats, output)
 
     results = tuple(all_results)
@@ -441,7 +439,11 @@ def run_dry_cycle(
         f"review_dropped_reasons={review_reason_summary}",
         file=output,
     )
-    return 1 if had_source_failure or delivery_failed else 0
+    # A source outage is reported through the operational alert, but does not
+    # invalidate the run: other sources and successful notifications/state
+    # updates remain useful.  A delivery failure still fails the run so that
+    # Actions can surface an unavailable Slack endpoint or alert channel.
+    return 1 if delivery_failed else 0
 
 
 def _print_source_stats(stats: SourceRunStats, output: TextIOBase) -> None:

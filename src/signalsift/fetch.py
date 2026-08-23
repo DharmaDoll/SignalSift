@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -23,6 +24,11 @@ HTTP_TIMEOUT_SECONDS = 10.0
 MAX_RESPONSE_BYTES = 5 * 1024 * 1024
 MAX_REDIRECTS = 3
 REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+# A few feeds intermittently reject requests at the edge.  Retry only statuses
+# that are commonly transient; other client errors remain visible immediately.
+RETRYABLE_STATUS_CODES = frozenset({403, 408, 425, 429, 500, 502, 503, 504})
+HTTP_RETRY_ATTEMPTS = 2
+HTTP_RETRY_BACKOFF_SECONDS = 0.5
 EXTERNAL_ID_PATTERN = re.compile(
     r"\b(?:CVE-\d{4}-\d{4,}|GHSA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4})\b",
     re.IGNORECASE,
@@ -51,6 +57,8 @@ def fetch_bytes(
     timeout_seconds: float = HTTP_TIMEOUT_SECONDS,
     max_response_bytes: int = MAX_RESPONSE_BYTES,
     max_redirects: int = MAX_REDIRECTS,
+    retry_attempts: int = HTTP_RETRY_ATTEMPTS,
+    retry_backoff_seconds: float = HTTP_RETRY_BACKOFF_SECONDS,
 ) -> FetchedContent:
     """Fetch one configured URL while enforcing transport safety limits."""
 
@@ -69,6 +77,8 @@ def fetch_bytes(
                 url,
                 max_response_bytes=max_response_bytes,
                 max_redirects=max_redirects,
+                retry_attempts=retry_attempts,
+                retry_backoff_seconds=retry_backoff_seconds,
             )
     except FetchError:
         raise
@@ -133,34 +143,64 @@ def _fetch_with_client(
     *,
     max_response_bytes: int,
     max_redirects: int,
+    retry_attempts: int,
+    retry_backoff_seconds: float,
 ) -> FetchedContent:
+    if retry_attempts < 0:
+        raise ValueError("retry_attempts must be non-negative")
+    if retry_backoff_seconds < 0:
+        raise ValueError("retry_backoff_seconds must be non-negative")
+
     current_url = url
     for redirect_count in range(max_redirects + 1):
-        with client.stream("GET", current_url) as response:
-            if response.status_code in REDIRECT_STATUSES:
-                if redirect_count >= max_redirects:
-                    raise FetchError(f"redirect limit exceeded ({max_redirects})")
-                location = response.headers.get("location")
-                if not location:
-                    raise FetchError("redirect response is missing Location header")
-                next_url = str(response.url.join(location))
-                _require_https_url(next_url, "redirect URL")
-                current_url = next_url
-                continue
+        redirected = False
+        for attempt in range(retry_attempts + 1):
+            with client.stream("GET", current_url) as response:
+                if response.status_code in REDIRECT_STATUSES:
+                    if redirect_count >= max_redirects:
+                        raise FetchError(f"redirect limit exceeded ({max_redirects})")
+                    location = response.headers.get("location")
+                    if not location:
+                        raise FetchError("redirect response is missing Location header")
+                    next_url = str(response.url.join(location))
+                    _require_https_url(next_url, "redirect URL")
+                    current_url = next_url
+                    redirected = True
+                    break
 
-            if not 200 <= response.status_code < 300:
-                raise FetchError(f"unexpected HTTP status: {response.status_code}")
-            _check_content_length(response, max_response_bytes)
-            body = bytearray()
-            for chunk in response.iter_bytes():
-                body.extend(chunk)
-                if len(body) > max_response_bytes:
-                    raise FetchError(f"response exceeds {max_response_bytes} bytes")
-            return FetchedContent(
-                url=str(response.url),
-                content=bytes(body),
-                content_type=response.headers.get("content-type"),
-            )
+                if not 200 <= response.status_code < 300:
+                    if (
+                        response.status_code in RETRYABLE_STATUS_CODES
+                        and attempt < retry_attempts
+                    ):
+                        delay = retry_backoff_seconds * (2**attempt)
+                        LOGGER.warning(
+                            "retrying HTTP status %s for %s (attempt %d/%d) in %.1fs",
+                            response.status_code,
+                            current_url,
+                            attempt + 1,
+                            retry_attempts,
+                            delay,
+                        )
+                        if delay:
+                            time.sleep(delay)
+                        continue
+                    raise FetchError(f"unexpected HTTP status: {response.status_code}")
+                _check_content_length(response, max_response_bytes)
+                body = bytearray()
+                for chunk in response.iter_bytes():
+                    body.extend(chunk)
+                    if len(body) > max_response_bytes:
+                        raise FetchError(f"response exceeds {max_response_bytes} bytes")
+                return FetchedContent(
+                    url=str(response.url),
+                    content=bytes(body),
+                    content_type=response.headers.get("content-type"),
+                )
+            if redirected:
+                break
+        if redirected:
+            continue
     raise AssertionError("redirect loop terminated unexpectedly")
 
 
