@@ -2,6 +2,8 @@
 
 **SignalSift** is a lightweight, configuration-driven signal collector that filters noise and delivers only what matters.
 
+運用を始める方は、まず[docs/OPERATIONS.md](docs/OPERATIONS.md)の手順を確認してください。Fork作成、Actions権限、Webhookなし検証、Slack Secret、本番state、cron、upstream同期までをまとめています。
+
 ```text
 Source
   ↓
@@ -130,9 +132,6 @@ config/ai_security.yaml
 ```
 
 The two files are intentionally independent. Changing the Supply Chain source list does not change AI Security, and vice versa.
-
-Fork作成からActions権限、Webhookなし検証、Slack Secret、本番state、cron有効化、upstream同期までの運用開始手順は[docs/OPERATIONS.md](docs/OPERATIONS.md)を参照してください。
-実PCでの`uv`、dry-run、日次観測、テストSlack送信の手順も同文書にまとめています。
 
 ### `supply_chain_sources.yaml`
 
