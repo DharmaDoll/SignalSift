@@ -1,6 +1,13 @@
 {
   "initial_cutoff_at": "2026-08-13T05:43:48.398735Z",
   "items": {
+    "036f00fda83fdc86070fe13db3f8375a95ff02e1210b54c509bef689825734c6": {
+      "notified_at": "2026-09-05T19:53:27.278979Z",
+      "published_at": "2026-09-04T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Attackers Use LLM Agent for Post-Exploitation After Marimo CVE-2026-39987 Exploit",
+      "url": "https://thehackernews.com/2026/05/attackers-use-llm-agent-for-post.html"
+    },
     "11e645c7b417d588d8ff9cf4d961c414afa05b9d18de0e30be70598e023d4b65": {
       "notified_at": "2026-08-18T23:02:08.498675Z",
       "published_at": "2026-08-18T14:00:00Z",
@@ -14,6 +21,13 @@
       "source": "adversa_ai",
       "title": "Top 10 zero-click attacks against AI agents",
       "url": "https://adversa.ai/blog/top-10-zero-click-attacks-against-ai-agents/"
+    },
+    "2dc1b85f1c87ef645447f2080e54ae99f04a176f3fb5c61abfb924e53e83c58b": {
+      "notified_at": "2026-09-05T19:53:27.278979Z",
+      "published_at": "2026-09-04T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Hermes AI agent used to automate attack on Thai Finance Ministry",
+      "url": "https://www.bleepingcomputer.com/news/security/hermes-ai-agent-used-to-automate-attack-on-thai-finance-ministry/"
     },
     "49fdad8cb08b5f12eeec95f0645bf6254ff8b3e533568f80d31ff9be7948eb64": {
       "notified_at": "2026-08-21T20:21:48.390036Z",
@@ -42,6 +56,13 @@
       "source": "microsoft_ai_red_team",
       "title": "ASCII smuggling crosses over from AI prompt injection to phishing evasion",
       "url": "https://www.microsoft.com/en-us/security/blog/2026/09/03/ascii-smuggling-crosses-over-from-ai-prompt-injection-to-phishing-evasion/"
+    },
+    "7207f2832d317d16b214634b41beeba9b946785ba618771dd8a0811d94a234fb": {
+      "notified_at": "2026-09-05T19:53:27.278979Z",
+      "published_at": "2026-09-04T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "AI Agent Conducted a Cyberattack on Its Own — It Took Less Than One Hour",
+      "url": "https://www.securitymagazine.com/articles/102325-ai-agent-conducted-a-cyberattack-on-its-own-it-took-less-than-one-hour"
     },
     "78440aae8879f53eb648e474cd77e309787d6b833e12a27e3de9239fc2daf7bf": {
       "notified_at": "2026-08-25T23:22:14.140819Z",
@@ -77,6 +98,13 @@
       "source": "sans_isc",
       "title": "The Coding-Agent Trap: When a \"Free\" LLM Endpoint Is the Adversary, (Mon, Aug 31st)",
       "url": "https://isc.sans.edu/diary/rss/33298"
+    },
+    "dab181c30609494f4cfb9a51ab7d49135483daf6dc6fced5e3bb653499a814f5": {
+      "notified_at": "2026-09-05T19:53:27.278979Z",
+      "published_at": "2026-09-04T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "AI agent at the wheel: How an attacker used LLMs to move from a CVE to an internal database in 4 pivots",
+      "url": "https://www.sysdig.com/blog/ai-agent-at-the-wheel-how-an-attacker-used-llms-to-move-from-a-cve-to-an-internal-database-in-4-pivots"
     },
     "dae1bd1c304b692b075f47f1c812137f1376d4cb8df74eee742a49933f1ee346": {
       "notified_at": "2026-08-21T20:21:48.390036Z",
