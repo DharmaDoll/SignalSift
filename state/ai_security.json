@@ -29,6 +29,13 @@
       "title": "Hermes AI agent used to automate attack on Thai Finance Ministry",
       "url": "https://www.bleepingcomputer.com/news/security/hermes-ai-agent-used-to-automate-attack-on-thai-finance-ministry/"
     },
+    "2ebb886378c1e32b2b0d1c4abd474c29f171f4612c47f23bfc43ad237cd3f05b": {
+      "notified_at": "2026-09-08T17:44:03.672565Z",
+      "published_at": "2026-09-08T14:00:00Z",
+      "source": "google_threat_intel",
+      "title": "GTIG AI Threat Tracker: From Prompting to Autonomy – The Evolution of Adversarial AI",
+      "url": "https://cloud.google.com/blog/topics/threat-intelligence/from-prompting-to-autonomy-the-evolution-of-adversarial-ai/"
+    },
     "49fdad8cb08b5f12eeec95f0645bf6254ff8b3e533568f80d31ff9be7948eb64": {
       "notified_at": "2026-08-21T20:21:48.390036Z",
       "published_at": "2026-08-20T00:00:00Z",
