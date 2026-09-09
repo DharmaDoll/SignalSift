@@ -85,6 +85,13 @@
       "title": "Securing Data in the AI era",
       "url": "https://www.wiz.io/blog/securing-data-in-the-ai-era"
     },
+    "9b655d3669a0e70e2f082bb987e371148068a9e675f188335011d31636480d9b": {
+      "notified_at": "2026-09-09T17:01:12.474830Z",
+      "published_at": "2026-09-09T16:06:00Z",
+      "source": "wiz_ai",
+      "title": "Off Guard: Breaking LiteLLM from authentication bypass to cloud compromise",
+      "url": "https://www.wiz.io/blog/off-guard-breaking-litellm-from-authentication-bypass-to-cloud-compromise"
+    },
     "aef2c4d57b05cb1e108069dff8c66f3c16758f2fb4443e1bd14e7ec87f6b573d": {
       "notified_at": "2026-08-18T23:02:08.498675Z",
       "published_at": "2026-08-15T00:00:00Z",
