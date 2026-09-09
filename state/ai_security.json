@@ -22,6 +22,13 @@
       "title": "Top 10 zero-click attacks against AI agents",
       "url": "https://adversa.ai/blog/top-10-zero-click-attacks-against-ai-agents/"
     },
+    "2c232270c746bff384682088ddb1328ff56fd2db615ee7589661958eb442c0e1": {
+      "notified_at": "2026-09-09T20:21:17.574948Z",
+      "published_at": "2026-09-08T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Unauthorized npm publish of Cline CLI cline@2.3.0 with modified postinstall script to install openclaw",
+      "url": "https://github.com/cline/cline/security/advisories/GHSA-9ppg-jx86-fqw7"
+    },
     "2dc1b85f1c87ef645447f2080e54ae99f04a176f3fb5c61abfb924e53e83c58b": {
       "notified_at": "2026-09-05T19:53:27.278979Z",
       "published_at": "2026-09-04T00:00:00Z",
@@ -85,12 +92,33 @@
       "title": "Securing Data in the AI era",
       "url": "https://www.wiz.io/blog/securing-data-in-the-ai-era"
     },
+    "90477d7e29b006dd01d6e149803989da30cc82eaa46a36b92e80329ceaea7fbb": {
+      "notified_at": "2026-09-09T20:21:17.574948Z",
+      "published_at": "2026-09-08T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Clinejection — Compromising Cline's Production Releases just by Prompting an Issue Triager",
+      "url": "https://adnanthekhan.com/posts/clinejection/"
+    },
     "9b655d3669a0e70e2f082bb987e371148068a9e675f188335011d31636480d9b": {
       "notified_at": "2026-09-09T17:01:12.474830Z",
       "published_at": "2026-09-09T16:06:00Z",
       "source": "wiz_ai",
       "title": "Off Guard: Breaking LiteLLM from authentication bypass to cloud compromise",
       "url": "https://www.wiz.io/blog/off-guard-breaking-litellm-from-authentication-bypass-to-cloud-compromise"
+    },
+    "9da1b2d40f1cf1c7c25ade5098ef0b8083ae63bcc98dbcc1e51761e507e143b5": {
+      "notified_at": "2026-09-09T20:21:17.574948Z",
+      "published_at": "2026-09-08T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Cline Supply Chain Attack Detected: cline@2.3.0 Silently Installs OpenClaw",
+      "url": "https://www.stepsecurity.io/blog/cline-supply-chain-attack-detected-cline-2-3-0-silently-installs-openclaw"
+    },
+    "a33214613b8e73b1673b3b15994aa5527fb6a3ae35356cbfe4402d7329194057": {
+      "notified_at": "2026-09-09T20:21:17.574948Z",
+      "published_at": "2026-09-08T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Post-mortem: Unauthorized Cline CLI npm publish on February 17, 2026",
+      "url": "https://cline.bot/blog/post-mortem-unauthorized-cline-cli-npm"
     },
     "aef2c4d57b05cb1e108069dff8c66f3c16758f2fb4443e1bd14e7ec87f6b573d": {
       "notified_at": "2026-08-18T23:02:08.498675Z",
@@ -106,12 +134,33 @@
       "title": "Oh Lord, AI Reporters Are Actually Breaking Big News",
       "url": "https://www.wired.com/story/ai-newsrooms-are-breaking-news-now-haha-im-in-danger/"
     },
+    "c0dc08604556dd19d7b56b1c1f635df22356dce8320b75396615e3d2a7cb98c0": {
+      "notified_at": "2026-09-09T20:21:17.574948Z",
+      "published_at": "2026-09-08T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "ChatGPT Operator: Prompt Injection Exploits & Defenses",
+      "url": "https://embracethered.com/blog/posts/2025/chatgpt-operator-prompt-injection-exploits/"
+    },
+    "cbe4f25edb5592f632ee2a08c2314d64c7130031d0fbb0727f8f129957df0e8d": {
+      "notified_at": "2026-09-09T20:21:17.574948Z",
+      "published_at": "2026-09-08T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "How Claude Code escapes its own denylist and sandbox",
+      "url": "https://ona.com/stories/how-claude-code-escapes-its-own-denylist-and-sandbox"
+    },
     "ccb08e9eeb29a1341792248516eefcb7e922c39a2f8524d37a074b6a4cfaed85": {
       "notified_at": "2026-08-31T22:23:32.165697Z",
       "published_at": "2026-08-31T20:00:34Z",
       "source": "sans_isc",
       "title": "The Coding-Agent Trap: When a \"Free\" LLM Endpoint Is the Adversary, (Mon, Aug 31st)",
       "url": "https://isc.sans.edu/diary/rss/33298"
+    },
+    "cf1331f7aef0ccf06e3dc82a402d6bd04f525cf335c7cb8ae05286325bd6d643": {
+      "notified_at": "2026-09-09T20:21:17.574948Z",
+      "published_at": "2026-09-08T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Cline CLI npm Package Compromised via Suspected Cache Poisoning Attack",
+      "url": "https://socket.dev/blog/cline-cli-npm-package-compromised-via-suspected-cache-poisoning-attack"
     },
     "dab181c30609494f4cfb9a51ab7d49135483daf6dc6fced5e3bb653499a814f5": {
       "notified_at": "2026-09-05T19:53:27.278979Z",
