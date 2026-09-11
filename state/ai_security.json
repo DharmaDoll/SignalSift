@@ -162,6 +162,13 @@
       "title": "Cline CLI npm Package Compromised via Suspected Cache Poisoning Attack",
       "url": "https://socket.dev/blog/cline-cli-npm-package-compromised-via-suspected-cache-poisoning-attack"
     },
+    "da1d45b1b087a2a96f7b17556e7b912c82cbb75dd3cf28584a01740a61ce0b2a": {
+      "notified_at": "2026-09-11T22:13:00.769574Z",
+      "published_at": "2026-09-10T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Anthropic discloses fourth AI hacking incident missed in earlier review",
+      "url": "https://www.reuters.com/legal/litigation/anthropic-reports-fourth-cybersecurity-incident-with-early-version-claude-2026-09-09/"
+    },
     "dab181c30609494f4cfb9a51ab7d49135483daf6dc6fced5e3bb653499a814f5": {
       "notified_at": "2026-09-05T19:53:27.278979Z",
       "published_at": "2026-09-04T00:00:00Z",
