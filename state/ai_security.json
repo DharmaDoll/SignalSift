@@ -85,6 +85,13 @@
       "title": "From Concept to Context Engine: How Wiz Built AI-Powered Data Discovery",
       "url": "https://www.wiz.io/blog/bucket-scanner-to-context-engine"
     },
+    "757191a6bec4bfb7ca36ae88320d434d8d1b99164748bc3d68ff5aeb44cd751a": {
+      "notified_at": "2026-09-17T21:54:05.453241Z",
+      "published_at": "2026-09-16T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "First Agentic AI Data Breach Reported to Spanish Regulator",
+      "url": "https://www.securityweek.com/first-agentic-ai-data-breach-reported-to-spanish-regulator/"
+    },
     "78440aae8879f53eb648e474cd77e309787d6b833e12a27e3de9239fc2daf7bf": {
       "notified_at": "2026-08-25T23:22:14.140819Z",
       "published_at": "2026-08-25T00:00:00Z",
@@ -105,6 +112,13 @@
       "source": "ai_incident_database",
       "title": "Clinejection — Compromising Cline's Production Releases just by Prompting an Issue Triager",
       "url": "https://adnanthekhan.com/posts/clinejection/"
+    },
+    "95752377ce779a423a5558db61f4c6277651c1d6abff50234374a826040a9a81": {
+      "notified_at": "2026-09-17T21:54:05.453241Z",
+      "published_at": "2026-09-16T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Spanish data watchdog publicises first AI agent-linked data breach report",
+      "url": "https://www.reuters.com/business/spanish-data-watchdog-publicises-first-ai-agent-linked-data-breach-report-2026-09-15/"
     },
     "9b655d3669a0e70e2f082bb987e371148068a9e675f188335011d31636480d9b": {
       "notified_at": "2026-09-09T17:01:12.474830Z",
