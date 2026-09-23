@@ -78,6 +78,13 @@
       "title": "ASCII smuggling crosses over from AI prompt injection to phishing evasion",
       "url": "https://www.microsoft.com/en-us/security/blog/2026/09/03/ascii-smuggling-crosses-over-from-ai-prompt-injection-to-phishing-evasion/"
     },
+    "5f021617b01eabbb05061194eeb783a08c8ecf45046601be9423cd2078ce3eb7": {
+      "notified_at": "2026-09-23T13:19:39.777520Z",
+      "published_at": "2026-09-23T07:50:00Z",
+      "source": "adversa_ai",
+      "title": "Top 10 attacks on Claude Code and what each one actually broke",
+      "url": "https://adversa.ai/blog/claude-code-vulnerabilities/"
+    },
     "7207f2832d317d16b214634b41beeba9b946785ba618771dd8a0811d94a234fb": {
       "notified_at": "2026-09-05T19:53:27.278979Z",
       "published_at": "2026-09-04T00:00:00Z",
