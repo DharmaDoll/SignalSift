@@ -85,6 +85,13 @@
       "title": "Top 10 attacks on Claude Code and what each one actually broke",
       "url": "https://adversa.ai/blog/claude-code-vulnerabilities/"
     },
+    "701f41443f71df6631742be570bb6a9adc955380b7d219f3e3d911a9eb143901": {
+      "notified_at": "2026-09-24T21:56:10.064533Z",
+      "published_at": "2026-09-24T18:26:12Z",
+      "source": "github_ai_and_ml_blog",
+      "title": "AI-powered fuzzing with the GitHub Security Lab Taskflow Agent",
+      "url": "https://github.blog/security/application-security/ai-powered-fuzzing-with-the-github-security-lab-taskflow-agent/"
+    },
     "7207f2832d317d16b214634b41beeba9b946785ba618771dd8a0811d94a234fb": {
       "notified_at": "2026-09-05T19:53:27.278979Z",
       "published_at": "2026-09-04T00:00:00Z",
