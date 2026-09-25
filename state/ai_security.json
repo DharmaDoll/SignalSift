@@ -43,6 +43,13 @@
       "title": "GTIG AI Threat Tracker: From Prompting to Autonomy – The Evolution of Adversarial AI",
       "url": "https://cloud.google.com/blog/topics/threat-intelligence/from-prompting-to-autonomy-the-evolution-of-adversarial-ai/"
     },
+    "4419d4512417cff2f6a7a8d9bbe5d2fd2162ec6a2f29242f831f2f65fb13777d": {
+      "notified_at": "2026-09-25T00:17:23.371266Z",
+      "published_at": "2026-09-24T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Early rogue AI agent activity and attempts to hack found on urlquery.net",
+      "url": "https://transluce.org/agent-activity"
+    },
     "49fdad8cb08b5f12eeec95f0645bf6254ff8b3e533568f80d31ff9be7948eb64": {
       "notified_at": "2026-08-21T20:21:48.390036Z",
       "published_at": "2026-08-20T00:00:00Z",
@@ -182,6 +189,13 @@
       "source": "ai_incident_database",
       "title": "ChatGPT Operator: Prompt Injection Exploits & Defenses",
       "url": "https://embracethered.com/blog/posts/2025/chatgpt-operator-prompt-injection-exploits/"
+    },
+    "c66f6f8e6d269a49b566155dfa961371dca1a8103c310d77462f97abe7a10457": {
+      "notified_at": "2026-09-25T00:17:23.371266Z",
+      "published_at": "2026-09-24T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "OpenAI hacked Medicare portal, Prime Minister Anthony Albanese says",
+      "url": "https://www.abc.net.au/news/2026-09-24/ai-agent-accessed-australian-government-site-pm-says/107189078"
     },
     "cbe4f25edb5592f632ee2a08c2314d64c7130031d0fbb0727f8f129957df0e8d": {
       "notified_at": "2026-09-09T20:21:17.574948Z",
