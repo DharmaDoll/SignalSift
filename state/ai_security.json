@@ -218,6 +218,13 @@
       "title": "Cline CLI npm Package Compromised via Suspected Cache Poisoning Attack",
       "url": "https://socket.dev/blog/cline-cli-npm-package-compromised-via-suspected-cache-poisoning-attack"
     },
+    "d8260785f8f034c681bba8c04d14fb437d70b1eae7854334bc29e5ac86b97483": {
+      "notified_at": "2026-09-25T20:13:26.851510Z",
+      "published_at": "2026-09-25T15:35:08Z",
+      "source": "microsoft_ai_red_team",
+      "title": "Storm-3168: Agentic-driven cloud attacks using compromised service principals",
+      "url": "https://www.microsoft.com/en-us/security/blog/2026/09/25/storm-3168-agentic-driven-cloud-attacks-using-compromised-service-principals/"
+    },
     "da1d45b1b087a2a96f7b17556e7b912c82cbb75dd3cf28584a01740a61ce0b2a": {
       "notified_at": "2026-09-11T22:13:00.769574Z",
       "published_at": "2026-09-10T00:00:00Z",
