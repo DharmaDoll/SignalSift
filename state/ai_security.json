@@ -197,6 +197,13 @@
       "title": "ChatGPT Operator: Prompt Injection Exploits & Defenses",
       "url": "https://embracethered.com/blog/posts/2025/chatgpt-operator-prompt-injection-exploits/"
     },
+    "c3de315991e1dc6225b1b46e96712cd1c6a31bbd3d9dc176afc5c6e237baee30": {
+      "notified_at": "2026-10-01T22:18:44.405224Z",
+      "published_at": "2026-09-30T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "I broke something': A Claude Code AI agent deleted 48,000 files in just over 100 seconds — then apologized for doing so",
+      "url": "https://www.techradar.com/pro/security/i-broke-something-a-claude-code-ai-agent-deleted-48-000-files-in-just-over-100-seconds-then-apologized-for-doing-so"
+    },
     "c66f6f8e6d269a49b566155dfa961371dca1a8103c310d77462f97abe7a10457": {
       "notified_at": "2026-09-25T00:17:23.371266Z",
       "published_at": "2026-09-24T00:00:00Z",
