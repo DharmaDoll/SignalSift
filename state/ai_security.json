@@ -288,6 +288,13 @@
       "title": "Scan for Good: Using AI to discover and fix high-priority exposures across public services and critical infrastructure",
       "url": "https://www.wiz.io/blog/scan-for-good-critical-ai-exposures"
     },
+    "f8ae06f7df20acce197146db4eb24ee0348669ad58f802ec95af65f3421218cc": {
+      "notified_at": "2026-10-05T17:49:43.642724Z",
+      "published_at": "2026-10-03T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "SalesBleed: Indirect Prompt Injection and 0-Click Data Exfiltration on Agentforce",
+      "url": "https://labs.zenity.io/post/salesbleed-0-click-data-exfiltration-on-agentforce"
+    },
     "f9105d058d8f053af3dab15ebfd5a4952eb81e8b338102446ad4a68e252bdd1b": {
       "notified_at": "2026-09-03T07:45:00.585605Z",
       "published_at": "2026-09-03T00:31:46Z",
