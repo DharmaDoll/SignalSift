@@ -15,6 +15,13 @@
       "title": "Staying Ahead of Adversarial AI Through Agentic Source Code Review",
       "url": "https://cloud.google.com/blog/topics/threat-intelligence/staying-ahead-of-adversarial-ai-through-agentic-source-code-review/"
     },
+    "1437ea96c8483731101a2308dcd2043d96a916bef161688701d7f70c190631a1": {
+      "notified_at": "2026-10-06T17:52:36.187171Z",
+      "published_at": "2026-10-06T12:50:00Z",
+      "source": "adversa_ai",
+      "title": "GitHub Copilot CLI vulnerability: Cryptographic Context Injection steals developer secrets",
+      "url": "https://adversa.ai/blog/cryptographic-context-injection-github-copilot/"
+    },
     "243afd079a125406a8174142e9ddd6c74985feb7f3bf9b9e00bcd3a7c084e25b": {
       "notified_at": "2026-08-18T23:02:08.498675Z",
       "published_at": "2026-08-18T10:00:00Z",
@@ -133,6 +140,13 @@
       "source": "wiz_ai",
       "title": "The Infostealer Incursion: How Stolen Credentials Breach Cloud, Code, and AI Environments",
       "url": "https://www.wiz.io/blog/infostealer-incursion-cloud-ai-credentials"
+    },
+    "8d6d785fe14ace2620a01898ac360a4a737cc0d2a90c1977545adb1035053966": {
+      "notified_at": "2026-10-06T17:52:36.187171Z",
+      "published_at": "2026-10-06T13:47:28Z",
+      "source": "wiz_ai",
+      "title": "Introducing Wiz AI SAST: Application Security that Understands Your Code and Your Infrastructure",
+      "url": "https://www.wiz.io/blog/introducing-wiz-ai-sast"
     },
     "8ee7251d4754c7888ce2329ec59e9cbcd04f9abeca7507a2b2352e3360bcf8f5": {
       "notified_at": "2026-08-18T23:02:08.498675Z",
