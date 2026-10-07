@@ -50,6 +50,13 @@
       "title": "GTIG AI Threat Tracker: From Prompting to Autonomy – The Evolution of Adversarial AI",
       "url": "https://cloud.google.com/blog/topics/threat-intelligence/from-prompting-to-autonomy-the-evolution-of-adversarial-ai/"
     },
+    "39aae8ac355068e962bb20d804f0c7cac0b21559ee8d488682c7e6cc9b6cada6": {
+      "notified_at": "2026-10-07T17:12:58.242327Z",
+      "published_at": "2026-10-07T14:53:27Z",
+      "source": "wiz_datasecurity",
+      "title": "How the Wiz Red Agent caught a Fortune 500 firm’s data exposure (that other tools missed)",
+      "url": "https://www.wiz.io/blog/red-agent-financial-services-data-exposure"
+    },
     "4419d4512417cff2f6a7a8d9bbe5d2fd2162ec6a2f29242f831f2f65fb13777d": {
       "notified_at": "2026-09-25T00:17:23.371266Z",
       "published_at": "2026-09-24T00:00:00Z",
@@ -196,6 +203,13 @@
       "source": "ai_incident_database",
       "title": "AI assistant hacks gym website in first known Australian autonomous cyber attack",
       "url": "https://www.abc.net.au/news/2026-08-10/ai-assistant-hacks-gym-website-aus-cyber-attack/107007986"
+    },
+    "b2e0e221140031e30c802fdb71ceec027eb397c9f4cae834e30453eb078d3d4c": {
+      "notified_at": "2026-10-07T17:12:58.242327Z",
+      "published_at": "2026-10-07T00:00:00Z",
+      "source": "bitwarden",
+      "title": "Open Source Security Summit 2026 recap: Hacking history, AI risk, and physical industry security",
+      "url": "https://bitwarden.com/blog/open-source-security-summit-2026-recap-hacking-history-ai-risk-and-physical-industry-security/"
     },
     "b356c4831902d8e9859baf6cdac24dac2b1e000197110649d913163622654ee2": {
       "notified_at": "2026-08-20T06:39:31.821635Z",
