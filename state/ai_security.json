@@ -29,6 +29,13 @@
       "title": "Top 10 zero-click attacks against AI agents",
       "url": "https://adversa.ai/blog/top-10-zero-click-attacks-against-ai-agents/"
     },
+    "2675e9c6b5baa345c56b2ce6b8f8fe23f35cd4052e187b54a452403fcfd54f52": {
+      "notified_at": "2026-10-14T16:28:14.520016Z",
+      "published_at": "2026-10-14T00:00:00Z",
+      "source": "bitwarden",
+      "title": "What the cyber age teaches about AI risk: Insights from David Sanger",
+      "url": "https://bitwarden.com/blog/what-the-cyber-age-teaches-about-ai-risk-insights-from-david-sanger/"
+    },
     "2c232270c746bff384682088ddb1328ff56fd2db615ee7589661958eb442c0e1": {
       "notified_at": "2026-09-09T20:21:17.574948Z",
       "published_at": "2026-09-08T00:00:00Z",
@@ -182,6 +189,13 @@
       "source": "wiz_ai",
       "title": "Off Guard: Breaking LiteLLM from authentication bypass to cloud compromise",
       "url": "https://www.wiz.io/blog/off-guard-breaking-litellm-from-authentication-bypass-to-cloud-compromise"
+    },
+    "9bdd2842c7430cd73a6ccbfb1b75b644cd639e61380f090b8ed356a9e3f6ab31": {
+      "notified_at": "2026-10-14T16:28:14.520016Z",
+      "published_at": null,
+      "source": "hiddenlayer",
+      "title": "Jevil in the details: Security implications of TypeSafe Jev and other System One models",
+      "url": "https://www.hiddenlayer.com/research/system-one-model-security"
     },
     "9da1b2d40f1cf1c7c25ade5098ef0b8083ae63bcc98dbcc1e51761e507e143b5": {
       "notified_at": "2026-09-09T20:21:17.574948Z",
