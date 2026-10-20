@@ -169,6 +169,13 @@
       "title": "The Infostealer Incursion: How Stolen Credentials Breach Cloud, Code, and AI Environments",
       "url": "https://www.wiz.io/blog/infostealer-incursion-cloud-ai-credentials"
     },
+    "7c81d4af867124a4c86ffafc36a3e5c85c869c34497680366b187264da0cc034": {
+      "notified_at": "2026-10-20T22:03:53.560479Z",
+      "published_at": "2026-10-20T20:03:10Z",
+      "source": "wiz_research",
+      "title": "From Phishing to LLMjacking: Threat Actors Targeting Cloud Billing Accounts for LLM Usage",
+      "url": "https://www.wiz.io/blog/from-phishing-to-llmjacking"
+    },
     "8d6d785fe14ace2620a01898ac360a4a737cc0d2a90c1977545adb1035053966": {
       "notified_at": "2026-10-06T17:52:36.187171Z",
       "published_at": "2026-10-06T13:47:28Z",
