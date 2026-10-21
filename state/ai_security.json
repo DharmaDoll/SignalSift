@@ -113,6 +113,13 @@
       "title": "ASCII smuggling crosses over from AI prompt injection to phishing evasion",
       "url": "https://www.microsoft.com/en-us/security/blog/2026/09/03/ascii-smuggling-crosses-over-from-ai-prompt-injection-to-phishing-evasion/"
     },
+    "56001df7fa6049326364408fbe10f92fa3470ca15e540075387ddb75c5e9aba5": {
+      "notified_at": "2026-10-21T17:53:11.270598Z",
+      "published_at": "2026-10-21T00:00:00Z",
+      "source": "bitwarden",
+      "title": "Lessons from the Cult of the Dead Cow for today's open source defenders",
+      "url": "https://bitwarden.com/blog/lessons-from-the-cult-of-the-dead-cow-for-todays-open-source-defenders/"
+    },
     "5ac88582b2bb35f265ea99cf99951014dc7434a389cf809587437ff125da0b1b": {
       "notified_at": "2026-10-14T23:38:45.192824Z",
       "published_at": "2026-10-14T20:13:53Z",
@@ -175,6 +182,13 @@
       "source": "wiz_research",
       "title": "From Phishing to LLMjacking: Threat Actors Targeting Cloud Billing Accounts for LLM Usage",
       "url": "https://www.wiz.io/blog/from-phishing-to-llmjacking"
+    },
+    "854393666dece51c9c9b2e9d330cd45e4527112e4425ac35b720d8c6601e3e9b": {
+      "notified_at": "2026-10-21T17:53:11.270598Z",
+      "published_at": "2026-10-21T13:59:59Z",
+      "source": "wiz_ai",
+      "title": "PHP2Shell: AI uncovers critical RCE vulnerabilities affecting 70% of the Internet",
+      "url": "https://www.wiz.io/blog/php2shell-php-rce"
     },
     "8d6d785fe14ace2620a01898ac360a4a737cc0d2a90c1977545adb1035053966": {
       "notified_at": "2026-10-06T17:52:36.187171Z",
