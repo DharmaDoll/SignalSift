@@ -337,6 +337,13 @@
       "title": "OpenAI’s Rogue AI Agent Hacked More Than Just Hugging Face",
       "url": "https://www.wired.com/story/openais-rogue-ai-agent-hacked-more-than-just-hugging-face/"
     },
+    "db49bd7ba5f98a8bf4a9a87b01663a9ea7349342808e38e19911a729443a94e1": {
+      "notified_at": "2026-10-21T21:13:02.294284Z",
+      "published_at": "2026-10-21T18:23:55Z",
+      "source": "microsoft_ai_red_team",
+      "title": "AI-driven, large-scale nation-state campaign using ARTEX enables supply chain compromise",
+      "url": "https://www.microsoft.com/en-us/security/blog/2026/10/21/storm-0940-uses-artex-agentic-ai-connectwise-supply-chain-compromise/"
+    },
     "de39eb1dd4471d453a08ea17c062b094ece40a3675456b2e999b71ecbbbe2de0": {
       "notified_at": "2026-08-18T23:02:08.498675Z",
       "published_at": "2026-08-17T12:23:13Z",
@@ -357,6 +364,13 @@
       "source": "wiz_ai",
       "title": "Inside 90 days of attacks on AI infrastructure",
       "url": "https://www.wiz.io/blog/ai-infrastructure-honeypot"
+    },
+    "ece573416c12cb8b5e58eeaa32b5116c101ca70be6287e0fe05a9851a829ef2d": {
+      "notified_at": "2026-10-21T21:13:02.294284Z",
+      "published_at": "2026-10-21T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "AI Agents as Attack Vectors: Unauthorized Access by Agents under Evaluation and Misuse of Open-Source Agentic AI Tools Targeting Indian ICT Assets",
+      "url": "https://www.cert-in.org.in/s2cMainServlet?pageid=PUBVLNOTES02&VLCODE=CIAD-2026-0049"
     },
     "ed4a4fbfb173189117676e005f89ee4ebdd8061024bdff37edc3dfdb89c9f452": {
       "notified_at": "2026-09-24T13:08:58.659730Z",
