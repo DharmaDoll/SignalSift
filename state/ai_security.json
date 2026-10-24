@@ -15,6 +15,13 @@
       "title": "Staying Ahead of Adversarial AI Through Agentic Source Code Review",
       "url": "https://cloud.google.com/blog/topics/threat-intelligence/staying-ahead-of-adversarial-ai-through-agentic-source-code-review/"
     },
+    "139b1eabaca13b0e67deea42d7765dba6e2777d6cc05cc21b98ef40a788f1e05": {
+      "notified_at": "2026-10-24T22:51:47.953393Z",
+      "published_at": "2026-10-24T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "AI-driven, large-scale nation-state campaign using ARTEX enables supply chain compromise",
+      "url": "https://www.microsoft.com/en-us/security/blog/2026/10/21/storm-0940-uses-artex-agentic-ai-connectwise-supply-chain-compromise/"
+    },
     "13d687c6e41af7598f0f5de5939deaab7d405c40c40b227b3a2226bf2d88cb4f": {
       "notified_at": "2026-10-22T16:35:02.743977Z",
       "published_at": null,
