@@ -87,6 +87,23 @@ Slack Incoming Webhook
 
 No continuously running server is required.
 
+## Tips: ChatGPT の schedule で新着を要約する
+
+Slack 通知の代わりに、SignalSift が保存した選定結果を ChatGPT の schedule で定期的に確認し、新しい記事だけを日本語で要約する使い方もあります。SignalSift が収集・選別を担当し、ChatGPT 側で要約を読む運用です。
+
+現在のワークフローでは、定期実行は Slack に送信しない `simulate-delivery` モードで動き、`state-test` ブランチの次のファイルに選定結果を保存します。
+
+- `state/supply_chain_vulnerability.json`
+- `state/ai_security.json`
+
+ChatGPT 側から対象ブランチの最新ファイルを取得できる環境で、それぞれの参照先を指定します。依頼内容の例:
+
+> 指定した2つの JSON の `items` を確認し、前回の確認以降に追加された記事だけを日本語で要約してください。各記事について「何が起きたか」「なぜ重要か」と元記事へのリンクを簡潔に示してください。取得できない場合は、新着なしとは扱わず、その旨を知らせてください。
+
+これは利用方法の一例で、SignalSift に ChatGPT 連携や要約済み管理が組み込まれているわけではありません。新着判定には `items` の記事キーを使い、前回確認したキーや時点を ChatGPT 側の運用で参照できることを確認してください。単に「直近数時間」の公開日時で絞ると、実行が抜けた場合や収集が遅れた場合に取りこぼす可能性があります。
+
+シミュレーション時の `notified_at` は記録した時刻であり、ChatGPT が要約した時刻ではありません。また、記録は現在180日保持されるため、永続的な記事アーカイブではありません。後から Slack 配信を始める場合も、`state-test` を本番の通知済み台帳 `state` に流用しないでください。
+
 ## Local development with `uv`
 
 Local execution is a supported development and debugging workflow. The project uses `uv` and a repository-local `.venv`; do not maintain a separate `requirements.txt` or use `pip install -e .` as the standard setup.
