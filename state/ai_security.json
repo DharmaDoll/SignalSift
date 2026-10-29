@@ -225,6 +225,13 @@
       "title": "Clinejection — Compromising Cline's Production Releases just by Prompting an Issue Triager",
       "url": "https://adnanthekhan.com/posts/clinejection/"
     },
+    "91e7f12d49b2da18d8af6f3945177b6ac10b31183af7140a605f381df97885a3": {
+      "notified_at": "2026-10-29T15:05:12.910989Z",
+      "published_at": "2026-10-29T14:26:22Z",
+      "source": "wiz_ai",
+      "title": "The Rise of Agentic Attacks: What They Look Like, and Where They're Headed",
+      "url": "https://www.wiz.io/blog/the-rise-of-agentic-attacks"
+    },
     "95752377ce779a423a5558db61f4c6277651c1d6abff50234374a826040a9a81": {
       "notified_at": "2026-09-17T21:54:05.453241Z",
       "published_at": "2026-09-16T00:00:00Z",
@@ -280,6 +287,13 @@
       "source": "ai_incident_database",
       "title": "Oh Lord, AI Reporters Are Actually Breaking Big News",
       "url": "https://www.wired.com/story/ai-newsrooms-are-breaking-news-now-haha-im-in-danger/"
+    },
+    "b85071e873659b9ea4b107ff19ad626ef8bdc6f73e5a313287ffe9efe499e7b6": {
+      "notified_at": "2026-10-29T15:05:12.910989Z",
+      "published_at": "2026-10-29T10:50:00Z",
+      "source": "adversa_ai",
+      "title": "Adversa AI Launches Coding Agent Security Platform to Block Cyberattacks on AI Agents in Real Time",
+      "url": "https://adversa.ai/blog/adversa-ai-launches-coding-agent-security-platform/"
     },
     "bbaa6689a5e83c780b8da11fbefd0e5844edb4ebb67faa406d385037132bf5aa": {
       "notified_at": "2026-10-22T23:52:12.800128Z",
