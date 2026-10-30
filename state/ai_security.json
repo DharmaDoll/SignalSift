@@ -36,6 +36,13 @@
       "title": "GitHub Copilot CLI vulnerability: Cryptographic Context Injection steals developer secrets",
       "url": "https://adversa.ai/blog/cryptographic-context-injection-github-copilot/"
     },
+    "2381d9ffcc6fa496840974d3eb4f21b960502c67a6b5da94184439e12b52d40c": {
+      "notified_at": "2026-10-30T13:48:11.037613Z",
+      "published_at": "2026-10-30T12:57:42Z",
+      "source": "wiz_ai",
+      "title": "Key Takeaways: AI Threat Readiness Survey Report 2026",
+      "url": "https://www.wiz.io/blog/ai-threat-readiness-survey-report-2026"
+    },
     "243afd079a125406a8174142e9ddd6c74985feb7f3bf9b9e00bcd3a7c084e25b": {
       "notified_at": "2026-08-18T23:02:08.498675Z",
       "published_at": "2026-08-18T10:00:00Z",
