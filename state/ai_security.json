@@ -274,6 +274,13 @@
       "title": "Post-mortem: Unauthorized Cline CLI npm publish on February 17, 2026",
       "url": "https://cline.bot/blog/post-mortem-unauthorized-cline-cli-npm"
     },
+    "a528cf9b480a2f2cbec45491002d65d211a653e117a84d80f26ed25cfa75d4b9": {
+      "notified_at": "2026-10-31T08:14:12.497069Z",
+      "published_at": "2026-10-31T01:02:57Z",
+      "source": "microsoft_ai_red_team",
+      "title": "Inside a malicious Claude Code-branded extension and its persistent SSH backdoor",
+      "url": "https://www.microsoft.com/en-us/security/blog/2026/10/30/inside-malicious-claude-code-branded-cursor-extension-persistent-ssh-backdoor/"
+    },
     "aef2c4d57b05cb1e108069dff8c66f3c16758f2fb4443e1bd14e7ec87f6b573d": {
       "notified_at": "2026-08-18T23:02:08.498675Z",
       "published_at": "2026-08-15T00:00:00Z",
