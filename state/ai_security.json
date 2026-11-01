@@ -36,6 +36,13 @@
       "title": "GitHub Copilot CLI vulnerability: Cryptographic Context Injection steals developer secrets",
       "url": "https://adversa.ai/blog/cryptographic-context-injection-github-copilot/"
     },
+    "1c05c41fbd24369116302c08a4a685df19868bec6b53e12182602ab5eb4cc731": {
+      "notified_at": "2026-11-01T04:11:00.622669Z",
+      "published_at": "2026-10-31T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Chainalysis discloses data breach from \"offensive agentic techniques\"",
+      "url": "https://www.bleepingcomputer.com/news/security/chainalysis-discloses-data-breach-from-offensive-agentic-techniques/"
+    },
     "2381d9ffcc6fa496840974d3eb4f21b960502c67a6b5da94184439e12b52d40c": {
       "notified_at": "2026-10-30T13:48:11.037613Z",
       "published_at": "2026-10-30T12:57:42Z",
@@ -413,6 +420,13 @@
       "source": "wiz_ai",
       "title": "Inside 90 days of attacks on AI infrastructure",
       "url": "https://www.wiz.io/blog/ai-infrastructure-honeypot"
+    },
+    "ecc9871b5d97385403b46243d7e740e72edefc144d862bf72e372c96a80ab8ee": {
+      "notified_at": "2026-11-01T04:11:00.622669Z",
+      "published_at": "2026-10-31T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "OpenAI agents carried out an undisclosed cyber-attack on RubyGems",
+      "url": "https://rubyhack.ai/"
     },
     "ece573416c12cb8b5e58eeaa32b5116c101ca70be6287e0fe05a9851a829ef2d": {
       "notified_at": "2026-10-21T21:13:02.294284Z",
