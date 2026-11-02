@@ -30,8 +30,8 @@ def test_loads_repository_configuration() -> None:
         ROOT / "config/ai_security.yaml"
     )
 
-    assert len(sources.enabled_sources) == 14
-    assert len(ai_sources.enabled_sources) == 15
+    assert len(sources.enabled_sources) == 15
+    assert len(ai_sources.enabled_sources) == 16
     assert "cisa_kev" not in {source.id for source in ai_sources.enabled_sources}
     assert {source.id for source in ai_sources.enabled_sources} >= {
         "ai_incident_database",

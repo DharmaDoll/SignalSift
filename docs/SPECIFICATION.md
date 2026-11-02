@@ -237,7 +237,7 @@ MVPではLLM用APIキーや外部DB接続情報を要求しない。
 
 `source_filter` は両Profileに共通して明白な媒体固有ノイズだけを扱う。現行設定ではFlattの社員インタビュー・採用情報・サービス紹介、Wizのwebinar・customer story、SANS ISCの日次Stormcast、StepSecurityのwebinar・customer story・mid-year update、Aikidoのcustomer story・webinar・company update・funding・製品比較カテゴリを除外する。Supply-chain、脆弱性、AI等の主題語はここへ重複させず、各Profile設定で評価する。
 
-Supply Chain Vulnerability Profileの有効な情報源は以下の9件である。AI Security Profileの独自情報源集合は`config/ai_security.yaml`を正本とする。
+Supply Chain Vulnerability Profileの主な情報源を以下に示す。有効な情報源集合は`config/supply_chain_sources.yaml`と`config/ai_security.yaml`をそれぞれ正本とする。
 
 | ID | 種別 | 優先度 | 役割 |
 |---|---|---:|---|
@@ -250,10 +250,13 @@ Supply Chain Vulnerability Profileの有効な情報源は以下の9件である
 | `aikido` | RSS | 2 | OSSマルウェア、パッケージ侵害 |
 | `google_threat_intel` | RSS | 3 | 大規模攻撃、悪用、脅威研究 |
 | `github_security_blog` | RSS | 3 | GitHub公式のsupply-chain、脆弱性、Security Lab情報 |
+| `phorion` | RSS | 3 | 開発者端末、IDE拡張、npm侵害とAIエージェントの攻撃・防御研究 |
 
 GitHub Security BlogはRSSの短いsummaryとは別に長い記事全文を `content` へ含む。本文中の付随語による誤分類を避けるため `match_content: false` とし、title、summary、categories、external IDsだけを評価する。正規化済み `content` 自体は破棄しない。
 
 Google Threat IntelligenceはRSSの`summary`自体に記事全文を含む。`match_content: false`に加えて`match_summary_chars: 500`を指定し、title、summary冒頭500文字、categories、external IDsだけを評価する。正規化済み`summary`は通知用に保持する。
+
+Phorionは両Profileで公式RSS `https://phorion.io/blog/index.xml` を汎用Fetcherで取得し、priority 3、`match_content: false`で評価する。title、短いsummary、categories、external IDsを通常ルールで選別し、強制通知対象にはしない。`SOC 2`、`compliance announcement`、`company news`、`product launch`、`feature release`をsource filterで除外する。Claude Code拡張機能侵害の報告は両Profile、npm攻撃防御の研究はSupply Chainで採用する。AI運用・検知の記事も、feed metadataにAIと攻撃の両文脈がなければ採用しない。
 
 コメントアウトされた候補は設定値ではなく、MVPで取得・実装・試験しない。
 

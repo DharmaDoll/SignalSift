@@ -237,6 +237,25 @@ sources:
         - customer story
     notes: Wiz research-tagged articles evaluated by the normal Supply Chain filters.
 
+  - id: phorion
+    name: Phorion Security Research
+    enabled: true
+    type: rss
+    url: https://phorion.io/blog/index.xml
+    priority: 3
+    match_content: false
+    source_filter:
+      exclude:
+        - SOC 2
+        - compliance announcement
+        - company news
+        - product launch
+        - feature release
+    notes: >
+      macOS endpoint, developer workstation, AI agent, malicious IDE extension,
+      and npm supply-chain research. Evaluate title, short summary, categories,
+      and external IDs with normal profile filters; exclude full feed content.
+
   - id: bitwarden
     name: Bitwarden Blog
     enabled: true
