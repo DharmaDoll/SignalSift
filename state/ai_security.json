@@ -323,6 +323,13 @@
       "title": "ASPM in the AI Era Part 2: Prioritize Exploitable Risks with Code-to-Cloud Context",
       "url": "https://www.wiz.io/blog/aspm-ai-era-pt-2-prioritize-appsec-risk"
     },
+    "bcfd5cebd310e25ba43a04562cedf5b349567e549b4cf9bbce335cce7db569de": {
+      "notified_at": "2026-11-02T19:08:06.386544Z",
+      "published_at": "2026-10-30T22:51:44Z",
+      "source": "wiz_ai",
+      "title": "“Black October” for AI Developer Platforms",
+      "url": "https://www.wiz.io/blog/black-october-for-ai-developer-platforms"
+    },
     "c0dc08604556dd19d7b56b1c1f635df22356dce8320b75396615e3d2a7cb98c0": {
       "notified_at": "2026-09-09T20:21:17.574948Z",
       "published_at": "2026-09-08T00:00:00Z",
@@ -413,6 +420,13 @@
       "source": "wiz",
       "title": "Wiz Red Agent Finds Its Way Into Snowflake’s Internal Jira Through a Flaw in a GitHub Copilot–Assisted PR",
       "url": "https://www.wiz.io/blog/red-agent-snowflake-copilot-cicd-bug"
+    },
+    "e80220791cdcd6cccfdd12c409fdca823f9a6431f1779c0d7c42c98c3b2967aa": {
+      "notified_at": "2026-11-02T19:08:06.386544Z",
+      "published_at": "2026-11-02T14:00:00Z",
+      "source": "google_threat_intel",
+      "title": "The Rise of LLMJacking: How Threat Actors Monetize Compromised Cloud and Model Resources",
+      "url": "https://cloud.google.com/blog/topics/threat-intelligence/llmjacking-monetizing-compromised-cloud-models/"
     },
     "eb804fa15efeb857eec40643b913d7d8a1c1c1860f184074fb4ff5c55271f038": {
       "notified_at": "2026-08-27T23:32:51.832424Z",
