@@ -92,6 +92,13 @@
       "title": "GTIG AI Threat Tracker: From Prompting to Autonomy – The Evolution of Adversarial AI",
       "url": "https://cloud.google.com/blog/topics/threat-intelligence/from-prompting-to-autonomy-the-evolution-of-adversarial-ai/"
     },
+    "312c432c8bf377a3f77e815c676d74dbec5021e538f1f8097fc9dd0aab3d07f4": {
+      "notified_at": "2026-11-03T17:30:00.579606Z",
+      "published_at": "2026-11-03T00:00:00Z",
+      "source": "adversa_ai",
+      "title": "Cursor security: top 10 attacks and what each one actually broke",
+      "url": "https://adversa.ai/blog/cursor-security/"
+    },
     "39aae8ac355068e962bb20d804f0c7cac0b21559ee8d488682c7e6cc9b6cada6": {
       "notified_at": "2026-10-07T17:12:58.242327Z",
       "published_at": "2026-10-07T14:53:27Z",
