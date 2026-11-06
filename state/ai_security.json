@@ -64,6 +64,13 @@
       "title": "What the cyber age teaches about AI risk: Insights from David Sanger",
       "url": "https://bitwarden.com/blog/what-the-cyber-age-teaches-about-ai-risk-insights-from-david-sanger/"
     },
+    "2a58c8e749f9c12d008df27de9f49a1ac89778826c1dc12686270beaffa4e14e": {
+      "notified_at": "2026-11-06T03:06:28.281690Z",
+      "published_at": "2026-11-05T23:46:50Z",
+      "source": "microsoft_ai_red_team",
+      "title": "Threat actors use agentic AI tooling to find and abuse exposed secrets",
+      "url": "https://www.microsoft.com/en-us/security/blog/2026/11/05/threat-actors-use-agentic-ai-tooling-to-find-and-abuse-exposed-secrets/"
+    },
     "2bff2872a02f3020d34641fb475d622304db399c0259f98f9a0329df117ba880": {
       "notified_at": "2026-11-03T01:58:31.226844Z",
       "published_at": "2026-10-30T00:00:00Z",
