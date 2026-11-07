@@ -8,6 +8,13 @@
       "title": "Attackers Use LLM Agent for Post-Exploitation After Marimo CVE-2026-39987 Exploit",
       "url": "https://thehackernews.com/2026/05/attackers-use-llm-agent-for-post.html"
     },
+    "10397b1a59d71bb040445a6e6d90900631a5450c373530b813d91068ff0796a8": {
+      "notified_at": "2026-11-07T21:24:33.817752Z",
+      "published_at": "2026-11-07T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Circumventing internet restrictions through an external browser",
+      "url": "https://alignment.openai.com/misalignment-reports/circumventing-internet-restrictions-through-an-external-browser"
+    },
     "11e645c7b417d588d8ff9cf4d961c414afa05b9d18de0e30be70598e023d4b65": {
       "notified_at": "2026-08-18T23:02:08.498675Z",
       "published_at": "2026-08-18T14:00:00Z",
@@ -35,6 +42,13 @@
       "source": "adversa_ai",
       "title": "GitHub Copilot CLI vulnerability: Cryptographic Context Injection steals developer secrets",
       "url": "https://adversa.ai/blog/cryptographic-context-injection-github-copilot/"
+    },
+    "14967ea88c21b6a58af49335b62a11bee9c785ed179a9ec3cf590a399dfb23c3": {
+      "notified_at": "2026-11-07T21:24:33.817752Z",
+      "published_at": "2026-11-07T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Exposing a GitHub token in a public repository",
+      "url": "https://alignment.openai.com/misalignment-reports/exposing-a-github-token-in-a-public-repository/"
     },
     "1c05c41fbd24369116302c08a4a685df19868bec6b53e12182602ab5eb4cc731": {
       "notified_at": "2026-11-01T04:11:00.622669Z",
@@ -155,6 +169,13 @@
       "title": "Meta AI model hacks another company during testing",
       "url": "https://www.reuters.com/technology/metas-ai-model-hacked-another-company-during-testing-information-reports-2026-08-05/"
     },
+    "5159eea1456aba42ed22f3ef338e9256523ce8af616fecd1b2d168d6c4ca6d6c": {
+      "notified_at": "2026-11-07T21:24:33.817752Z",
+      "published_at": "2026-11-07T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Retrieving server secrets and bypassing authorization on a government statistics website",
+      "url": "https://alignment.openai.com/misalignment-reports/retrieving-server-secrets-and-bypassing-authorization-on-a-government-statistics-website/"
+    },
     "5386143a5bd094399559e3cb45f1afdaab6128c92551c8cb9794550ed37880ef": {
       "notified_at": "2026-08-20T06:39:31.821635Z",
       "published_at": "2026-08-18T00:00:00Z",
@@ -175,6 +196,13 @@
       "source": "bitwarden",
       "title": "Lessons from the Cult of the Dead Cow for today's open source defenders",
       "url": "https://bitwarden.com/blog/lessons-from-the-cult-of-the-dead-cow-for-todays-open-source-defenders/"
+    },
+    "5a8d25453f6a3030b4602e47117cd5696f5ae6e57f476b2c030e4e84dd42e222": {
+      "notified_at": "2026-11-07T21:24:33.817752Z",
+      "published_at": "2026-11-07T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Unauthorized communication via temporary file hosting services",
+      "url": "https://alignment.openai.com/misalignment-reports/unauthorized-communication-via-temporary-file-hosting-services/"
     },
     "5ac88582b2bb35f265ea99cf99951014dc7434a389cf809587437ff125da0b1b": {
       "notified_at": "2026-10-14T23:38:45.192824Z",
@@ -224,6 +252,20 @@
       "source": "ai_incident_database",
       "title": "Anthropic asks court to dismiss music publishers' AI claims",
       "url": "https://www.reuters.com/legal/litigation/anthropic-asks-court-dismiss-music-publishers-ai-claims-2024-08-16/"
+    },
+    "7ab02e99aa28c42f2d8df01e8784880d24cf6257cdf9979044486ebe3001b533": {
+      "notified_at": "2026-11-07T21:24:33.817752Z",
+      "published_at": "2026-11-07T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Damaging the task environment to trigger a reset",
+      "url": "https://alignment.openai.com/misalignment-reports/damaging-the-task-environment-to-trigger-a-reset/"
+    },
+    "7b40bf02cad4c1f4d9b1a82db34ac4b92154bd0a773ada538c96291509ac2f19": {
+      "notified_at": "2026-11-07T21:24:33.817752Z",
+      "published_at": "2026-11-07T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Reaching an internal EDA host through a reference tool",
+      "url": "https://alignment.openai.com/misalignment-reports/reaching-an-internal-eda-host-through-a-reference-tool/"
     },
     "7bca8d589a5da0109308522b13a0b97827a39c17973ba3a558f4d423113f7b2e": {
       "notified_at": "2026-09-27T12:42:24.527055Z",
@@ -280,6 +322,13 @@
       "source": "ai_incident_database",
       "title": "Spanish data watchdog publicises first AI agent-linked data breach report",
       "url": "https://www.reuters.com/business/spanish-data-watchdog-publicises-first-ai-agent-linked-data-breach-report-2026-09-15/"
+    },
+    "982b372bd1bda27487eb6fb1acf03ab1e27d3af0116889d262b707f3a472d336": {
+      "notified_at": "2026-11-07T21:24:33.817752Z",
+      "published_at": "2026-11-07T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Command injecting a reference tool to copy a source file",
+      "url": "https://alignment.openai.com/misalignment-reports/command-injecting-a-reference-tool-to-copy-a-source-file/"
     },
     "9b655d3669a0e70e2f082bb987e371148068a9e675f188335011d31636480d9b": {
       "notified_at": "2026-09-09T17:01:12.474830Z",
@@ -455,6 +504,13 @@
       "source": "google_threat_intel",
       "title": "The Rise of LLMJacking: How Threat Actors Monetize Compromised Cloud and Model Resources",
       "url": "https://cloud.google.com/blog/topics/threat-intelligence/llmjacking-monetizing-compromised-cloud-models/"
+    },
+    "e9e068f9ef61d7d12acfef324d5296619f0b1841550becc813b6e409f886d3f7": {
+      "notified_at": "2026-11-07T21:24:33.817752Z",
+      "published_at": "2026-11-07T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Signing up for disposable emails and searching GitHub for leaked API keys",
+      "url": "https://alignment.openai.com/misalignment-reports/searching-github-for-leaked-api-keys/"
     },
     "eb804fa15efeb857eec40643b913d7d8a1c1c1860f184074fb4ff5c55271f038": {
       "notified_at": "2026-08-27T23:32:51.832424Z",
