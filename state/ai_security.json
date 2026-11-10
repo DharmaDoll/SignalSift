@@ -50,6 +50,13 @@
       "title": "Exposing a GitHub token in a public repository",
       "url": "https://alignment.openai.com/misalignment-reports/exposing-a-github-token-in-a-public-repository/"
     },
+    "18e105325cf0edf8e0061d02f481fcc596238db92031f51ee476274ebcb8638b": {
+      "notified_at": "2026-11-10T01:51:57.747057Z",
+      "published_at": "2026-11-09T20:17:31Z",
+      "source": "microsoft_ai_red_team",
+      "title": "FORGE Lab uses agentic tools to identify memory safety issues in Rust",
+      "url": "https://www.microsoft.com/en-us/security/blog/2026/11/09/forge-lab-uses-agentic-tools-to-identify-memory-safety-issues-in-rust/"
+    },
     "1c05c41fbd24369116302c08a4a685df19868bec6b53e12182602ab5eb4cc731": {
       "notified_at": "2026-11-01T04:11:00.622669Z",
       "published_at": "2026-10-31T00:00:00Z",
