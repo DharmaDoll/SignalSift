@@ -253,6 +253,13 @@
       "title": "From Concept to Context Engine: How Wiz Built AI-Powered Data Discovery",
       "url": "https://www.wiz.io/blog/bucket-scanner-to-context-engine"
     },
+    "7509446baf8a7b82ec08f4eb41d5baf3352c992a00a1af4ac3902d2bf01a981f": {
+      "notified_at": "2026-11-13T20:17:42.332650Z",
+      "published_at": "2026-11-12T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Acronis researchers uncover AI attack mesh targeting emergency services",
+      "url": "https://www.acronis.com/en/blog/posts/acronis-researchers-uncover-ai-attack-mesh-targeting-emergency-services/"
+    },
     "757191a6bec4bfb7ca36ae88320d434d8d1b99164748bc3d68ff5aeb44cd751a": {
       "notified_at": "2026-09-17T21:54:05.453241Z",
       "published_at": "2026-09-16T00:00:00Z",
@@ -483,6 +490,13 @@
       "source": "ai_incident_database",
       "title": "Cline CLI npm Package Compromised via Suspected Cache Poisoning Attack",
       "url": "https://socket.dev/blog/cline-cli-npm-package-compromised-via-suspected-cache-poisoning-attack"
+    },
+    "d44991d6906d56438d26e417e78b642d57d7be83f4cd09fc8d89cb8d650fb813": {
+      "notified_at": "2026-11-13T20:17:42.332650Z",
+      "published_at": "2026-11-12T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "BOSSAI: Inside the AI attack mesh that targeted Taiwan’s emergency services",
+      "url": "https://www.acronis.com/en/tru/posts/bossai-inside-the-ai-attack-mesh-that-targeted-taiwans-emergency-services/"
     },
     "d8260785f8f034c681bba8c04d14fb437d70b1eae7854334bc29e5ac86b97483": {
       "notified_at": "2026-09-25T20:13:26.851510Z",
