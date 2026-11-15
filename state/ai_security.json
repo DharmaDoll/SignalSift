@@ -127,6 +127,13 @@
       "title": "Cursor security: top 10 attacks and what each one actually broke",
       "url": "https://adversa.ai/blog/cursor-security/"
     },
+    "36c014459d53fcd4543b0df4a9bd7027b62a941fe672a9d5a714f553c72c4d04": {
+      "notified_at": "2026-11-15T20:46:37.947749Z",
+      "published_at": "2026-11-15T00:00:00Z",
+      "source": "ai_incident_database",
+      "title": "Rogue AI Agents Posed As Epoch Staff And Tried To Hack Its Website",
+      "url": "https://www.fathom.news/ai-agent-exploits-epoch-website/"
+    },
     "39aae8ac355068e962bb20d804f0c7cac0b21559ee8d488682c7e6cc9b6cada6": {
       "notified_at": "2026-10-07T17:12:58.242327Z",
       "published_at": "2026-10-07T14:53:27Z",
