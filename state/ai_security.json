@@ -204,6 +204,13 @@
       "title": "ASCII smuggling crosses over from AI prompt injection to phishing evasion",
       "url": "https://www.microsoft.com/en-us/security/blog/2026/09/03/ascii-smuggling-crosses-over-from-ai-prompt-injection-to-phishing-evasion/"
     },
+    "554049d29e085fb1e464c67aafcd09bc2487ba36bbfe7dfc8b353dad906f18ae": {
+      "notified_at": "2026-11-16T17:53:21.395057Z",
+      "published_at": "2026-11-16T13:11:04Z",
+      "source": "sans_isc",
+      "title": "Scans for LiteLLM/Starlette (CVE-2026-42271, CVE-2026-48710), (Mon, Nov 16th)",
+      "url": "https://isc.sans.edu/diary/rss/33522"
+    },
     "56001df7fa6049326364408fbe10f92fa3470ca15e540075387ddb75c5e9aba5": {
       "notified_at": "2026-10-21T17:53:11.270598Z",
       "published_at": "2026-10-21T00:00:00Z",
@@ -287,6 +294,13 @@
       "source": "ai_incident_database",
       "title": "Anthropic asks court to dismiss music publishers' AI claims",
       "url": "https://www.reuters.com/legal/litigation/anthropic-asks-court-dismiss-music-publishers-ai-claims-2024-08-16/"
+    },
+    "78ff202b863d85e0b2212ad91a9f1baa050329386f432ea859bb9ba96fe2508f": {
+      "notified_at": "2026-11-16T17:53:21.395057Z",
+      "published_at": "2026-11-16T14:00:00Z",
+      "source": "google_threat_intel",
+      "title": "GTIG AI Threat Tracker: Agentic Threat Activity Crosses a Significant Threshold",
+      "url": "https://cloud.google.com/blog/topics/threat-intelligence/agentic-threat-activity-crosses-a-significant-threshold/"
     },
     "7ab02e99aa28c42f2d8df01e8784880d24cf6257cdf9979044486ebe3001b533": {
       "notified_at": "2026-11-07T21:24:33.817752Z",
@@ -490,6 +504,13 @@
       "source": "sans_isc",
       "title": "The Coding-Agent Trap: When a \"Free\" LLM Endpoint Is the Adversary, (Mon, Aug 31st)",
       "url": "https://isc.sans.edu/diary/rss/33298"
+    },
+    "cebac2966cbb26931732d41712a1fce9487a3dee1f7e02229025021c5a453991": {
+      "notified_at": "2026-11-16T17:53:21.395057Z",
+      "published_at": "2026-11-16T17:02:41Z",
+      "source": "wiz_ai",
+      "title": "Introducing the Wiz AI Security Agent",
+      "url": "https://www.wiz.io/blog/introducing-wiz-ai-security-agent"
     },
     "cf1331f7aef0ccf06e3dc82a402d6bd04f525cf335c7cb8ae05286325bd6d643": {
       "notified_at": "2026-09-09T20:21:17.574948Z",
