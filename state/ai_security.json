@@ -400,6 +400,13 @@
       "title": "Cline Supply Chain Attack Detected: cline@2.3.0 Silently Installs OpenClaw",
       "url": "https://www.stepsecurity.io/blog/cline-supply-chain-attack-detected-cline-2-3-0-silently-installs-openclaw"
     },
+    "9e064e054ba6f5c6e6dafea9ce540202c851dea3d8fde211765e33705b26b344": {
+      "notified_at": "2026-11-17T19:34:46.788854Z",
+      "published_at": "2026-11-17T15:00:00Z",
+      "source": "microsoft_ai_red_team",
+      "title": "The risks of device code authentication for AI coding agents",
+      "url": "https://www.microsoft.com/en-us/security/blog/2026/11/17/the-risks-of-device-code-authentication-for-ai-coding-agents/"
+    },
     "a33214613b8e73b1673b3b15994aa5527fb6a3ae35356cbfe4402d7329194057": {
       "notified_at": "2026-09-09T20:21:17.574948Z",
       "published_at": "2026-09-08T00:00:00Z",
