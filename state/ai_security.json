@@ -15,6 +15,13 @@
       "title": "Circumventing internet restrictions through an external browser",
       "url": "https://alignment.openai.com/misalignment-reports/circumventing-internet-restrictions-through-an-external-browser"
     },
+    "1178317b8afe448491e4342f84accb6d62ed344372ded353526a64ffbca3db00": {
+      "notified_at": "2026-11-18T19:55:47.271917Z",
+      "published_at": null,
+      "source": "hiddenlayer",
+      "title": "ChatGPT Sites Vulnerability Left Email-Derived Identifiers in Public CT Logs",
+      "url": "https://www.hiddenlayer.com/research/chatgpt-sites-certificate-transparency-logs"
+    },
     "11e645c7b417d588d8ff9cf4d961c414afa05b9d18de0e30be70598e023d4b65": {
       "notified_at": "2026-08-18T23:02:08.498675Z",
       "published_at": "2026-08-18T14:00:00Z",
