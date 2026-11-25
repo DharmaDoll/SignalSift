@@ -658,6 +658,13 @@
       "source": "wiz_ai",
       "title": "How Developers Prevent Production Risk at the Source",
       "url": "https://www.wiz.io/blog/prevent-production-risk-at-code-stage"
+    },
+    "fcbf68df04d12a39f297626f821aa260086b2d279b8030b2ba91e5e1772fbc6f": {
+      "notified_at": "2026-11-25T17:46:39.653625Z",
+      "published_at": "2026-11-25T14:27:03Z",
+      "source": "wiz_ai",
+      "title": "Inside Agentic Offensive Frameworks: Intent IDs",
+      "url": "https://www.wiz.io/blog/agentic-offensive-frameworks-intent-ids-artex-cairn"
     }
   },
   "observed": {
